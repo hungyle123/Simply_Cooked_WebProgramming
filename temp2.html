@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layout 2 - Logo in Header</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header with logo + title in one row */
+    header {
+      background: #0077b6;
+      color: white;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header .logo {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      flex: 1;
+      text-align: center;
+    }
+
+    nav {
+      background: #023e8a;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      position: relative;
+    }
+
+    nav .menu {
+      display: flex;
+      gap: 1rem;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    .hamburger {
+      display: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: white;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+    }
+
+    footer {
+      background: #03045e;
+      color: white;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .menu {
+        display: none;
+        flex-direction: column;
+        background: #023e8a;
+        position: absolute;
+        top: 50px; /* below nav */
+        right: 0;
+        width: 200px;
+      }
+      .menu.show {
+        display: flex;
+      }
+      .hamburger {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">LOGO</div>
+    <h1>Responsive Website</h1>
+  </header>
+
+  <nav>
+    <div class="hamburger" onclick="toggleMenu()">☰</div>
+    <div class="menu" id="menu">
+      <a href="#">Home</a>
+      <a href="#">Services</a>
+      <a href="#">News</a>
+      <a href="#">Contact</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Main Content</h2>
+    <p>The navigation bar will collapse into a ☰ menu on smaller screens.</p>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Web Programming</p>
+  </footer>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById("menu").classList.toggle("show");
+    }
+  </script>
+</body>
+</html>
+
+

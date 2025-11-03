@@ -1,0 +1,91 @@
+/* responsive.css */
+
+@media (max-width: 1024px){
+  .cards-grid{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:40px}
+  .header-inner{gap:8px}
+}
+
+@media (max-width: 800px){
+  .nav-list{display:none}
+  .mobile-only{display:inline-flex}
+  .cta-inner{flex-direction:column;align-items:flex-start}
+  .cards-grid{grid-template-columns:1fr}
+  .hero .hero-panel{flex-direction:column;align-items:flex-start}
+  .footer-inner{flex-direction:column;gap:14px;align-items:flex-start}
+}
+
+/* mobile drawer & modal full height */
+@media (max-width:420px){
+  .logo{height:36px}
+  .hero h1{font-size:28px}
+  .subscribe-form input{width:100%}
+  .mobile-drawer-inner{width:100%}
+}
+/* Responsive Welcome */
+@media (max-width: 900px) {
+  .welcome-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .welcome-left h1 {
+    font-size: 38px;
+  }
+}
+
+
+/* Responsive */
+@media (max-width: 900px) {
+  .aboutus-inner {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .aboutus-photo-box {
+    height: auto;
+  }
+
+  .aboutus-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .aboutus-gallery {
+    grid-template-columns: 1fr;
+  }
+  .aboutus-gallery-item {
+    height: 200px;
+  }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .aboutus-inner {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .aboutus-photo-box {
+    height: auto;
+  }
+
+  .aboutus-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .aboutus-gallery {
+    grid-template-columns: 1fr;
+  }
+  .aboutus-gallery-item {
+    height: 200px;
+  }
+}
+/* nếu form rộng hơn (ví dụ sau này trên desktop full width), cho nó nằm ngang */
+@media(min-width:600px){
+  .auth-social-row {
+    flex-direction: row;
+  }
+}
