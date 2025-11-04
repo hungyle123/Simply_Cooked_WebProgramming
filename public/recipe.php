@@ -1,23 +1,88 @@
 <?php
+// /public/recipe.php
 require_once __DIR__ . '/../config/db.php';
+
 $active = '';
-$page_title = "Recipe - Simply Cooked";
+$page_title = "Recipe - Cooks Delight";
 include __DIR__ . '/../app/views/header.php';
 
-/* ========== Input: id hoặc slug ========== */
+/* ===================== Input ===================== */
 $rid  = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 
-$recipe = null;
+/* ===================== Helpers ===================== */
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+function bullets_from_text($text){
+  $lines = preg_split('/\R/', (string)$text);
+  $out = [];
+  foreach ($lines as $ln){
+    $ln = trim($ln);
+    if ($ln === '') continue;
+
+    // Strip bullet/gạch/số đầu dòng: • · ‣ ● - * – —  hoặc  "1." / "2)"
+    // Lưu ý: dùng mã Unicode hex cho en/em dash: \x{2013}, \x{2014}
+    $ln = preg_replace(
+      '/^\s*(?:[\x{2022}\x{00B7}\x{2023}\x{25CF}\-\*\x{2013}\x{2014}]+|\d+\s*[.)])\s*/u',
+      '',
+      $ln
+    );
+
+    if ($ln !== '') $out[] = $ln;
+  }
+  return $out;
+}
+function split_paragraphs($text){
+  $parts = preg_split('/\R{2,}|\n{1,}/', (string)$text);
+  $out = [];
+  foreach($parts as $p){ $p = trim($p); if($p!=='') $out[] = $p; }
+  return $out;
+}
+function render_titled_bullet_html($line){
+  $parts = explode(':', trim($line), 2);
+  if(count($parts)===2){
+    return '<strong>'.h(trim($parts[0])).':</strong> '.h(trim($parts[1]));
+  }
+  return h($line);
+}
+function embed_youtube_if_any($url){
+  if(!$url) return '';
+  $vid = '';
+  if(preg_match('~youtu\.be/([^?&]+)~', $url, $m)) $vid = $m[1];
+  elseif(preg_match('~v=([^?&]+)~', $url, $m))   $vid = $m[1];
+  if(!$vid) return '<a class="btn" href="'.h($url).'" target="_blank" rel="noopener">Watch Video</a>';
+  $src = "https://www.youtube.com/embed/".h($vid);
+  return '<div class="video-embed"><iframe src="'.$src.'" title="Recipe video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+}
+function embed_origin_map(array $recipe){
+  $place = trim((string)($recipe['origin_place'] ?? ''));
+  $zoom  = (int)($recipe['origin_zoom'] ?? 11);
+  $mymap = trim((string)($recipe['origin_map_embed_url'] ?? ''));
+
+  if ($mymap !== '') {
+    // Ưu tiên My Maps (đường dẫn đã là /maps/d/embed?...):
+    $src = htmlspecialchars($mymap, ENT_QUOTES, 'UTF-8');
+  } elseif ($place !== '') {
+    // Fallback: dùng q=<place>&z=<zoom>&output=embed
+    $q   = urlencode($place);
+    $z   = max(1, min(20, $zoom ?: 11));
+    $src = "https://www.google.com/maps?q={$q}&z={$z}&output=embed";
+  } else {
+    return ''; // Không có dữ liệu để nhúng
+  }
+
+  return '<div class="map-embed"><iframe src="'.$src.'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" width="100%" height="100%" style="border:0;" allowfullscreen></iframe></div>';
+}
+
+/* ===================== Load recipe ===================== */
 if ($rid > 0) {
-  $sql = "SELECT r.*, u.full_name AS author_name, u.profile_image_url AS author_avatar, u.bio AS author_bio
+  $sql = "SELECT r.*, u.full_name AS author_name, u.profile_image_url AS author_avatar
           FROM recipes r
           LEFT JOIN users u ON u.user_id = r.user_id
           WHERE r.recipe_id = ?";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param('i', $rid);
 } elseif ($slug !== '') {
-  $sql = "SELECT r.*, u.full_name AS author_name, u.profile_image_url AS author_avatar, u.bio AS author_bio
+  $sql = "SELECT r.*, u.full_name AS author_name, u.profile_image_url AS author_avatar
           FROM recipes r
           LEFT JOIN users u ON u.user_id = r.user_id
           WHERE r.slug = ?";
@@ -41,439 +106,403 @@ if (!$recipe) {
   exit;
 }
 
-/* ========== Categories (để hiển thị chip + similar) ========== */
-$catSlugs = [];
-$catNames = [];
-$catSql = "SELECT c.slug, c.name
-           FROM recipe_categories rc
-           JOIN categories c ON c.category_id = rc.category_id
-           WHERE rc.recipe_id = ?";
-$stmt = $conn->prepare($catSql);
-$stmt->bind_param('i', $recipe['recipe_id']);
-$stmt->execute();
-$cr = $stmt->get_result();
-while ($row = $cr->fetch_assoc()) {
-  $catSlugs[] = $row['slug'];
-  $catNames[] = $row['name'];
+/* ===================== Increment views ===================== */
+$rid = (int)$recipe['recipe_id'];
+$conn->query("UPDATE recipes SET views = views + 1 WHERE recipe_id = {$rid} LIMIT 1");
+
+/* ===================== Load related data ===================== */
+// ==== RELATED: recipes cùng category, trừ chính nó ====
+$related = [];
+if ($rid > 0) {
+  $sqlRel = "SELECT r.recipe_id, r.title, r.slug, r.main_image_url, r.total_time, r.difficulty, r.is_featured, r.views, r.created_at
+    FROM recipes r
+    JOIN recipe_categories rc ON rc.recipe_id = r.recipe_id
+    WHERE rc.category_id IN (
+      SELECT category_id FROM recipe_categories WHERE recipe_id = ?
+    )
+      AND r.recipe_id <> ?
+    GROUP BY r.recipe_id
+    ORDER BY r.is_featured DESC, r.views DESC, r.created_at DESC
+    LIMIT 6";
+  if ($st = $conn->prepare($sqlRel)) {
+    $st->bind_param('ii', $rid, $rid);
+    $st->execute();
+    $related = $st->get_result()->fetch_all(MYSQLI_ASSOC);
+    $st->close();
+  }
+  // Fallback: nếu chưa có món cùng category, lấy 6 món mới nhất (trừ chính nó)
+  if (!$related) {
+    $q = $conn->query("
+      SELECT recipe_id, title, slug, main_image_url, total_time, difficulty, is_featured, views, created_at
+      FROM recipes
+      WHERE recipe_id <> {$rid}
+      ORDER BY created_at DESC
+      LIMIT 6
+    ");
+    if ($q) $related = $q->fetch_all(MYSQLI_ASSOC);
+  }
 }
-$stmt->close();
 
-/* ========== Where to buy (stores) ========== */
-$stores = [];
-$storeSql = "SELECT s.*
-             FROM recipe_stores rs
-             JOIN stores s ON s.store_id = rs.store_id
-             WHERE rs.recipe_id = ?
-             ORDER BY s.name ASC";
-$stmt = $conn->prepare($storeSql);
-$stmt->bind_param('i', $recipe['recipe_id']);
-$stmt->execute();
-$stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$cats = [];
+$q = $conn->query("SELECT c.name, c.slug
+                   FROM recipe_categories rc
+                   JOIN categories c ON c.category_id = rc.category_id
+                   WHERE rc.recipe_id = {$rid}");
+if ($q) $cats = $q->fetch_all(MYSQLI_ASSOC);
 
-/* ========== Ingredients (normalized) ========== */
 $ingredients = [];
-$ingSql = "SELECT name, quantity, unit, note
-           FROM recipe_ingredients
-           WHERE recipe_id = ?
-           ORDER BY sort_order, id";
-$stmt = $conn->prepare($ingSql);
-$stmt->bind_param('i', $recipe['recipe_id']);
-$stmt->execute();
-$ir = $stmt->get_result();
-while ($row = $ir->fetch_assoc()) {
-  $ingredients[] = $row;
-}
-$stmt->close();
+$q = $conn->query("SELECT name, quantity, unit, note, sort_order
+                   FROM recipe_ingredients
+                   WHERE recipe_id = {$rid}
+                   ORDER BY sort_order ASC, id ASC");
+if ($q) $ingredients = $q->fetch_all(MYSQLI_ASSOC);
 
-/* ========== Equipment & Nutrition (optional) ========== */
 $equipment = [];
-$eqSql = "SELECT name
-          FROM recipe_equipment
-          WHERE recipe_id = ?
-          ORDER BY sort_order, id";
-$stmt = $conn->prepare($eqSql);
-$stmt->bind_param('i', $recipe['recipe_id']);
-$stmt->execute();
-$equipment = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$q = $conn->query("SELECT name, sort_order FROM recipe_equipment WHERE recipe_id={$rid} ORDER BY sort_order ASC, id ASC");
+if ($q) $equipment = $q->fetch_all(MYSQLI_ASSOC);
 
-$nutrition = null;
-$nuSql = "SELECT calories, protein_g, fat_g, carbs_g, note
-          FROM recipe_nutrition
-          WHERE recipe_id = ?";
-$stmt = $conn->prepare($nuSql);
-$stmt->bind_param('i', $recipe['recipe_id']);
-$stmt->execute();
-$nutrition = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$sections = [];
+$q = $conn->query("SELECT section_title, section_body
+                   FROM recipe_instruction_sections
+                   WHERE recipe_id = {$rid}
+                   ORDER BY sort_order ASC, id ASC");
+if ($q) $sections = $q->fetch_all(MYSQLI_ASSOC);
 
-/* ========== Similar recipes theo category ========== */
-$similar = [];
-if (!empty($catSlugs)) {
-  $in = implode(',', array_fill(0, count($catSlugs), '?'));
-  $types = str_repeat('s', count($catSlugs)) . 'i';
-  $params = array_merge($catSlugs, [$recipe['recipe_id']]);
 
-  $simSql = "SELECT DISTINCT r.recipe_id, r.title, r.slug, r.meta_description, r.main_image_url, r.total_time, r.prep_time, r.is_featured
-             FROM recipes r
-             JOIN recipe_categories rc ON rc.recipe_id = r.recipe_id
-             JOIN categories c ON c.category_id = rc.category_id
-             WHERE c.slug IN ($in) AND r.recipe_id <> ?
-             ORDER BY r.created_at DESC
-             LIMIT 6";
-  $stmt = $conn->prepare($simSql);
-  $stmt->bind_param($types, ...$params);
-  $stmt->execute();
-  $similar = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-  $stmt->close();
-}
+/* ===================== Derived ===================== */
+$page_title = h($recipe['title']) . " - Cooks Delight";
 
-/* ========== Meta hiển thị ========== */
-$title = $recipe['title'] ?: 'Recipe';
-$intro = $recipe['description'] ?: ($recipe['meta_description'] ?? '');
-$img   = $recipe['main_image_url'] ?: '/assets/images/placeholder.jpg';
-$prep  = $recipe['prep_time'] ?: '';
-$cook  = $recipe['cook_time'] ?: '';
-$total = $recipe['total_time'] ?: '';
-$serv  = $recipe['servings'] ?: '';
-$diff  = strtoupper($recipe['difficulty'] ?: (!empty($recipe['is_featured']) ? 'HARD' : 'EASY')) . ' PREP';
-
-/* ===== Helpers: render instructions & dos/donts theo style Figma ===== */
-function render_instructions($introText, $fullText) {
-  ob_start(); ?>
-  <h2 class="recipes-title" style="font-size:28px;margin-top:20px;">INSTRUCTIONS</h2>
-  <?php if (!empty($introText)): ?>
-    <p style="margin:10px 0 16px;color:#574f48;line-height:1.7;"><?= nl2br(htmlspecialchars($introText)) ?></p>
-  <?php endif; ?>
-
-  <?php
-  // Quy ước: dòng tiêu đề (section) viết HOA hoặc kết thúc bằng dấu ":" -> render h3 nhỏ màu cam
-  $lines = preg_split('/\R/', (string)$fullText);
-  foreach ($lines as $ln) {
-    $t = trim($ln);
-    if ($t === '') { echo '<br>'; continue; }
-
-    $isHeading = false;
-    if (substr($t, -1) === ':' || strtoupper($t) === $t && mb_strlen($t) <= 40) {
-      $isHeading = true;
-    }
-    if ($isHeading) {
-      echo '<div style="margin-top:14px;color:#e85b3a;font-weight:800;letter-spacing:.02em;">'
-         . htmlspecialchars(rtrim($t, ':'))
-         . '</div>';
-      continue;
-    }
-
-    // bullet nếu bắt đầu bằng "- "
-    if (strpos($t, '- ') === 0) {
-      echo '<ul style="margin:6px 0;padding-left:18px;"><li style="line-height:1.7;color:#2a2725;">'
-         . htmlspecialchars(substr($t, 2))
-         . '</li></ul>';
-    } else {
-      echo '<p style="margin:4px 0;color:#2a2725;line-height:1.7;">'
-         . htmlspecialchars($t)
-         . '</p>';
-    }
-  }
-  return ob_get_clean();
-}
-
-function render_dos_donts($raw) {
-  $lines = preg_split('/\R/', (string)$raw);
-  $mode = null; // 'do' | 'dont'
-  $bufDo = []; $bufDont = [];
-
-  foreach ($lines as $ln) {
-    $t = trim($ln);
-    if ($t === '') continue;
-
-    // nhận tiêu đề khối
-    if (stripos($t, 'do’') === 0 || stripos($t, "do'") === 0 || preg_match('/^do[\s:]/i',$t)) { $mode = 'do'; continue; }
-    if (stripos($t, 'don’') === 0 || stripos($t, "don'") === 0 || preg_match('/^don/i',$t)) { $mode = 'dont'; continue; }
-
-    if (strpos($t, '- ') === 0) $t = substr($t, 2);
-
-    // pattern **Title:** body
-    $title = '';
-    $body  = $t;
-    if (preg_match('/^\*\*(.+?)\*\*:\s*(.+)$/u', $t, $m)) {
-      $title = $m[1]; $body = $m[2];
-    }
-
-    $itemHtml = '<li style="margin:6px 0;line-height:1.7;"><span style="font-weight:700;">'
-              . htmlspecialchars($title)
-              . '</span>' . ($title ? ': ' : '')
-              . htmlspecialchars($body) . '</li>';
-
-    if ($mode === 'dont') $bufDont[] = $itemHtml; else $bufDo[] = $itemHtml;
-  }
-
-  ob_start(); ?>
-  <div class="dosdonts" style="margin-top:18px;">
-    <h3 class="recipes-title" style="margin-bottom:10px;">
-      Let’s go over the basics– the do’s, and the don’ts– for How to Cook a chicken
-    </h3>
-
-    <?php if ($bufDo): ?>
-      <div style="margin-top:12px;">
-        <div style="color:#e85b3a;font-weight:800;letter-spacing:.02em;margin-bottom:8px;">DO’S:</div>
-        <ul style="margin:0;padding-left:18px;"><?php echo implode('', $bufDo); ?></ul>
-      </div>
-    <?php endif; ?>
-
-    <?php if ($bufDont): ?>
-      <div style="margin-top:18px;">
-        <div style="color:#e85b3a;font-weight:800;letter-spacing:.02em;margin-bottom:8px;">DON’TS:</div>
-        <ul style="margin:0;padding-left:18px;"><?php echo implode('', $bufDont); ?></ul>
-      </div>
-    <?php endif; ?>
-  </div>
-  <?php
-  return ob_get_clean();
+/* small helper to print ingredient line */
+function ingredient_line($ing){
+  $line = '';
+  if ($ing['quantity']!==null && $ing['quantity']!=='') $line .= h($ing['quantity']).' ';
+  if ($ing['unit']) $line .= h($ing['unit']).' ';
+  $line .= h($ing['name']);
+  if ($ing['note']) $line .= ' — '.h($ing['note']);
+  return $line;
 }
 ?>
-
-<style>
-.recipe-hero{background:var(--card);border-radius:var(--round);box-shadow:var(--shadow);padding:28px 28px 18px;border:1px solid rgba(0,0,0,0.04)}
-.recipe-hero .meta-line{display:flex;gap:14px;align-items:center;justify-content:center;font-weight:600;letter-spacing:.02em}
-.recipe-hero .meta-dot{opacity:.6}
-.recipe-hero-img{width:100%;height:auto;border-radius:16px;display:block;margin-top:18px}
-.recipe-layout{display:grid;grid-template-columns:1.45fr .8fr;gap:22px;margin-top:22px}
-@media(max-width:960px){.recipe-layout{grid-template-columns:1fr}}
-.sidebox{background:var(--card);border:1px solid #e6ded5;border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
-.sidebox h4{margin:4px 0 10px;font-family:var(--font-heading);letter-spacing:.02em}
-.sidebox ul{margin:0;padding-left:18px}
-.sidebox .map-placeholder{background:#f3ece5;border:1px dashed #d7cfc7;border-radius:12px;height:180px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#7b7570}
-.badge-chip{display:inline-block;padding:6px 10px;border-radius:999px;background:#fde7df;color:#e85b3a;font-weight:700;font-size:12px}
-.author-box{display:flex;gap:12px;align-items:center;border-top:1px solid #e6ded5;padding-top:16px;margin-top:16px}
-.author-box img{width:44px;height:44px;border-radius:999px;object-fit:cover}
-.similar-head{margin:26px 0 10px}
-
-.author-spotlight{
-  border:1px solid #e6ded5;
-  background:var(--card);
-  border-radius:16px;
-  padding:18px;
-  box-shadow:var(--shadow);
-  display:flex;
-  gap:16px;
-  align-items:flex-start;
-  margin-top:28px;
-}
-.author-spotlight .avatar{
-  width:88px;height:88px;border-radius:14px;object-fit:cover;flex:0 0 88px;
-  box-shadow:0 2px 10px rgba(0,0,0,.06);
-}
-.author-spotlight .name{
-  font-weight:700; font-size:18px; margin:0 0 6px;
-}
-.author-spotlight .bio{
-  color:#4e4944; line-height:1.7; margin:0 0 14px;
-}
-.author-spotlight .cta{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:10px 16px; border:1px solid #1a1a1a; border-radius:999px;
-  font-weight:700; text-transform:uppercase; font-size:13px;
-}
-.author-spotlight .cta:hover{ box-shadow:0 4px 14px rgba(0,0,0,.08); }
-</style>
-
 <main class="site-main">
-  <!-- Breadcrumb -->
-  <div class="container breadcrumb">
-    <ul>
-      <li><a href="index.php">Home</a></li>
-      <li>/</li>
-      <li><a href="recipes.php">Recipes</a></li>
-      <li>/</li>
-      <li><strong><?= htmlspecialchars($title) ?></strong></li>
-    </ul>
-  </div>
+  <!-- HERO -->
+  <section class="recipe-hero">
+    <div class="container hero-grid">
+      <div class="hero-left">
+        <h1 class="recipe-title"><?= h($recipe['title']) ?></h1>
 
-  <section class="container">
-    <div class="recipe-hero">
-      <div style="text-align:center;">
-        <span class="badge-chip">RECIPE</span>
-        <h1 class="recipes-title" style="margin:10px 0 8px;"><?= htmlspecialchars(strtoupper($title)) ?></h1>
-        <?php if ($intro): ?>
-          <p class="recipes-desc" style="max-width:760px;margin:0 auto;"><?= htmlspecialchars($intro) ?></p>
+        <?php if (!empty($cats)): ?>
+          <div class="recipe-cats">
+            <?php foreach ($cats as $c): ?>
+              <span class="chip"><?= h($c['name']) ?></span>
+            <?php endforeach; ?>
+          </div>
         <?php endif; ?>
-        <div class="meta-line" style="margin-top:8px;">
-          <?php if ($total): ?>
-            <span>⏱ <?= htmlspecialchars($total) ?></span>
-          <?php elseif ($prep || $cook): ?>
-            <span>⏱ Prep <?= htmlspecialchars($prep) ?><?= $cook ? " · Cook ".htmlspecialchars($cook) : "" ?></span>
-          <?php endif; ?>
-          <span class="meta-dot">•</span>
-          <span><?= htmlspecialchars($diff) ?></span>
-          <span class="meta-dot">•</span>
-          <span><?= $serv ? htmlspecialchars($serv) : 'Serves —' ?></span>
-        </div>
-      </div>
-      <img class="recipe-hero-img" src="<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars($title) ?>">
-    </div>
 
-    <div class="recipe-layout">
-      <!-- MAIN -->
-      <article>
         <?php if (!empty($recipe['description'])): ?>
-          <p style="margin-top:16px;color:#574f48;"><?= nl2br(htmlspecialchars($recipe['description'])) ?></p>
+          <?php foreach (split_paragraphs($recipe['description']) as $p): ?>
+            <p class="recipe-desc"><?= h($p) ?></p>
+          <?php endforeach; ?>
         <?php endif; ?>
 
-        <?php
-          // DO’s / DON’Ts (nếu có)
-          if (!empty($recipe['dos_donts'])) {
-            echo render_dos_donts($recipe['dos_donts']);
-          }
-        ?>
+        <ul class="meta-list">
+          <?php if ($recipe['prep_time']): ?><li><strong>Prep:</strong> <?= h($recipe['prep_time']) ?></li><?php endif; ?>
+          <?php if ($recipe['cook_time']): ?><li><strong>Cook:</strong> <?= h($recipe['cook_time']) ?></li><?php endif; ?>
+          <?php if ($recipe['total_time']): ?><li><strong>Total:</strong> <?= h($recipe['total_time']) ?></li><?php endif; ?>
+          <li><strong>Difficulty:</strong> <?= h($recipe['difficulty']) ?></li>
+          <li><strong>Views:</strong> <?= (int)$recipe['views'] + 1 ?></li>
+        </ul>
 
-        <?php
-          // INSTRUCTIONS (intro + nội dung)
-          echo render_instructions($recipe['instructions_intro'] ?? '', $recipe['instructions'] ?? '');
-        ?>
+        <!-- mini cards to fill empty space -->
+        <div class="mini-cards">
+          <div class="mini-card">
+            <div class="mini-title">Ingredients</div>
+            <?php if ($ingredients): ?>
+              <ul class="mini-list">
+                <?php foreach (array_slice($ingredients,0,8) as $ing): ?>
+                  <li><?= ingredient_line($ing) ?></li>
+                <?php endforeach; ?>
+              </ul>
+              <a href="#ingredients" class="mini-more">View full list ↓</a>
+            <?php else: ?>
+              <p class="muted">No ingredients listed.</p>
+            <?php endif; ?>
+          </div>
 
-        <!-- Author Spotlight -->
-        <div class="author-spotlight">
-          <img class="avatar"
-              src="<?= htmlspecialchars($recipe['author_avatar'] ?: '/assets/images/author_sophia.jpg') ?>"
-              alt="<?= htmlspecialchars($recipe['author_name'] ?: 'Author') ?>">
-
-          <div>
-            <div class="name"><?= htmlspecialchars($recipe['author_name'] ?: 'Cooks Delight') ?></div>
-            <p class="bio">
-              <?php
-                $bio = trim($recipe['author_bio'] ?? '');
-                if ($bio === '') {
-                  $bio = "In the world of pots and pans, I'm on a mission to turn every meal into a masterpiece. "
-                      . "Cooks Delight is not just a blog; it's a shared space where the love for food transcends boundaries. "
-                      . "Here, we celebrate the art of crafting meals that not only nourish the body but also feed the soul.";
-                }
-                echo htmlspecialchars($bio);
-              ?>
-            </p>
-            <a class="cta" href="aboutus.php">Learn More</a>
+          <div class="mini-card">
+            <div class="mini-title">Equipment</div>
+            <?php if ($equipment): ?>
+              <ul class="mini-list">
+                <?php foreach (array_slice($equipment,0,6) as $eq): ?>
+                  <li><?= h($eq['name']) ?></li>
+                <?php endforeach; ?>
+              </ul>
+            <?php else: ?>
+              <p class="muted">No special equipment.</p>
+            <?php endif; ?>
           </div>
         </div>
-      </article>
+      </div>
 
-      <!-- SIDEBAR -->
-      <aside>
-        <div class="sidebox">
-          <h4>INGREDIENTS</h4>
-          <?php if ($ingredients): ?>
-            <ul>
-              <?php foreach ($ingredients as $ing):
-                $txt = $ing['name'];
-                if (!empty($ing['quantity'])) $txt = $ing['quantity'].' '.($ing['unit']??''). ' ' . $txt;
-                if (!empty($ing['note'])) $txt .= ' — '.$ing['note'];
-              ?>
-                <li><?= htmlspecialchars(trim(preg_replace('/\s+/', ' ', $txt))) ?></li>
+      <div class="hero-right">
+        <?php if (!empty($recipe['main_image_url'])): ?>
+          <img class="hero-img" src="<?= h($recipe['main_image_url']) ?>" alt="<?= h($recipe['title']) ?>">
+        <?php endif; ?>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN GRID: left text (tips + instructions), right sidebar (stores + video) -->
+  <section class="container main-grid">
+    <div class="main-left">
+      <!-- TIPS stacked vertically with bordered box -->
+      <?php if (!empty($recipe['do_tips']) || !empty($recipe['dont_tips'])): ?>
+      <section class="tips-block bordered" id="tips">
+        <h2 class="tips-heading">Let’s go over the basics — the do’s and don’ts — for <?= h($recipe['title']) ?></h2>
+
+
+        <?php if (!empty($recipe['do_tips'])): ?>
+          <div class="tips-col">
+            <div class="tips-label tips-label--do">DO’S:</div>
+            <ul class="tips-list">
+              <?php foreach (bullets_from_text($recipe['do_tips']) as $line): ?>
+                <li><?= render_titled_bullet_html($line) ?></li>
               <?php endforeach; ?>
             </ul>
-          <?php else: ?>
-            <p class="muted">No ingredients listed.</p>
-          <?php endif; ?>
-        </div>
+          </div>
+        <?php endif; ?>
 
-        <div class="sidebox" style="margin-top:14px;">
-          <h4>WHERE TO BUY</h4>
-          <?php if ($stores): ?>
-            <ul style="margin-bottom:12px;">
-              <?php foreach ($stores as $s): ?>
-                <li style="margin-bottom:6px;">
-                  <strong><?= htmlspecialchars($s['name']) ?></strong>
-                  <?php if ($s['address']): ?>
-                    <div class="muted" style="font-size:13px;"><?= htmlspecialchars($s['address']) ?></div>
-                  <?php endif; ?>
-                  <div style="margin-top:6px;">
-                    <?php if (!empty($s['google_maps_url'])): ?>
-                      <a class="btn-small" target="_blank" href="<?= htmlspecialchars($s['google_maps_url']) ?>">View on Map</a>
-                    <?php else: ?>
-                      <span class="muted">Map link coming soon</span>
-                    <?php endif; ?>
-                  </div>
-                </li>
+        <?php if (!empty($recipe['dont_tips'])): ?>
+          <div class="tips-col">
+            <div class="tips-label tips-label--dont">DON’TS:</div>
+            <ul class="tips-list">
+              <?php foreach (bullets_from_text($recipe['dont_tips']) as $line): ?>
+                <li><?= render_titled_bullet_html($line) ?></li>
               <?php endforeach; ?>
             </ul>
-          <?php else: ?>
-            <p class="muted">No store suggestions yet.</p>
-          <?php endif; ?>
-          <div class="sidebox map-placeholder" style="height:160px;margin-top:8px;">Map preview placeholder</div>
-        </div>
+          </div>
+        <?php endif; ?>
+      </section>
+      <?php endif; ?>
 
-        <div class="sidebox" style="margin-top:14px;">
-          <h4>EQUIPMENT</h4>
-          <?php if ($equipment): ?>
-            <ul>
-              <?php foreach ($equipment as $e): ?>
-                <li><?= htmlspecialchars($e['name']) ?></li>
+      <!-- INSTRUCTIONS -->
+      <section class="instructions bordered" id="instructions">
+        <h2 class="instructions-title">INSTRUCTIONS</h2>
+
+        <?php if (!empty($recipe['instructions_intro'])): ?>
+          <?php foreach (split_paragraphs($recipe['instructions_intro']) as $p): ?>
+            <p class="instructions-intro"><?= h($p) ?></p>
+          <?php endforeach; ?>
+        <?php endif; ?>
+
+        <?php $prepare = bullets_from_text($recipe['prep_instructions'] ?? ''); ?>
+        <?php if ($prepare): ?>
+          <h3 class="section-heading accent">PREHEAT AND PREPARE</h3>
+          <ul class="section-list">
+            <?php foreach ($prepare as $line): ?>
+              <li><?= h($line) ?></li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php $cook = bullets_from_text($recipe['cook_instructions'] ?? ''); ?>
+        <?php if ($cook): ?>
+          <h3 class="section-heading accent">COOK</h3>
+          <ul class="section-list">
+            <?php foreach ($cook as $line): ?>
+              <li><?= h($line) ?></li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php if (!empty($sections)): ?>
+          <?php foreach ($sections as $sec): ?>
+            <h3 class="section-heading accent"><?= h($sec['section_title']) ?></h3>
+            <ul class="section-list">
+              <?php foreach (bullets_from_text($sec['section_body']) as $line): ?>
+                <li><?= h($line) ?></li>
               <?php endforeach; ?>
             </ul>
-          <?php else: ?>
-            <ul>
-              <li>Roasting pan</li>
-              <li>Meat thermometer</li>
-              <li>Cutting board</li>
-              <li>Kitchen twine</li>
-            </ul>
-          <?php endif; ?>
-        </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
 
-        <div class="sidebox" style="margin-top:14px;">
-          <h4>NUTRITION (est.)</h4>
-          <?php if ($nutrition): ?>
-            <ul>
-              <?php if ($nutrition['calories'] !== null): ?><li><strong>Calories:</strong> <?= (int)$nutrition['calories'] ?></li><?php endif; ?>
-              <?php if ($nutrition['protein_g'] !== null): ?><li><strong>Protein:</strong> <?= htmlspecialchars($nutrition['protein_g']) ?> g</li><?php endif; ?>
-              <?php if ($nutrition['fat_g'] !== null): ?><li><strong>Total fat:</strong> <?= htmlspecialchars($nutrition['fat_g']) ?> g</li><?php endif; ?>
-              <?php if ($nutrition['carbs_g'] !== null): ?><li><strong>Carbs:</strong> <?= htmlspecialchars($nutrition['carbs_g']) ?> g</li><?php endif; ?>
-            </ul>
-            <?php if (!empty($nutrition['note'])): ?>
-              <div class="muted" style="font-size:12px;margin-top:8px;"><?= htmlspecialchars($nutrition['note']) ?></div>
-            <?php endif; ?>
-          <?php else: ?>
-            <div class="muted" style="font-size:12px;">* Approximate values per serving.</div>
-          <?php endif; ?>
-        </div>
-      </aside>
+        <?php if (!empty($recipe['instructions'])): ?>
+          <details class="instructions-full">
+            <summary>Full text instructions</summary>
+            <?php foreach (split_paragraphs($recipe['instructions']) as $p): ?>
+              <p><?= h($p) ?></p>
+            <?php endforeach; ?>
+          </details>
+        <?php endif; ?>
+      </section>
+
+      <!-- Full Ingredients section anchor (for "View full list") -->
+      <section class="ingredients bordered" id="ingredients">
+        <h2 class="block-title">Ingredients</h2>
+        <?php if ($ingredients): ?>
+          <ul class="ingredients-list">
+            <?php foreach ($ingredients as $ing): ?>
+              <li><?= ingredient_line($ing) ?></li>
+            <?php endforeach; ?>
+          </ul>
+        <?php else: ?>
+          <p class="muted">No ingredients listed.</p>
+        <?php endif; ?>
+      </section>
+
+      <?php if ($equipment): ?>
+      <section class="equipment bordered">
+        <h2 class="block-title">Equipment</h2>
+        <ul class="ingredients-list">
+          <?php foreach ($equipment as $eq): ?>
+            <li><?= h($eq['name']) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+      <?php endif; ?>
     </div>
 
-    <!-- SIMILAR -->
-    <?php if ($similar): ?>
-      <h2 class="recipes-title similar-head">SIMILAR RECIPES</h2>
-      <div class="cards-grid">
-        <?php foreach ($similar as $r): ?>
-          <article class="recipe-card">
-            <a class="recipe-link" href="recipe.php?id=<?= (int)$r['recipe_id'] ?>">
-              <div class="recipe-card-media">
-                <?php if (!empty($r['is_featured'])): ?>
-                  <span class="badge-pill badge-orange">Featured</span>
-                <?php endif; ?>
-                <img class="recipe-card-img"
-                     src="<?= htmlspecialchars($r['main_image_url'] ?: '/assets/images/placeholder.jpg') ?>"
-                     alt="<?= htmlspecialchars($r['title']) ?>">
-              </div>
-              <div class="recipe-body">
-                <h3 class="recipe-title"><?= htmlspecialchars($r['title']) ?></h3>
-                <?php if (!empty($r['meta_description'])): ?>
-                  <p class="recipe-excerpt"><?= htmlspecialchars($r['meta_description']) ?></p>
-                <?php endif; ?>
-                <div class="recipe-meta">
-                  <?php if (!empty($r['total_time'])): ?>
-                    <span class="meta-item">Total: <?= htmlspecialchars($r['total_time']) ?></span>
-                  <?php elseif (!empty($r['prep_time'])): ?>
-                    <span class="meta-item">Prep: <?= htmlspecialchars($r['prep_time']) ?></span>
-                  <?php endif; ?>
-                </div>
-                <div class="recipe-cta"><span class="btn-small">View Recipe</span></div>
-              </div>
-            </a>
-          </article>
-        <?php endforeach; ?>
+    <!-- Right Sidebar -->
+    <aside class="main-right">
+      <?php if (!empty($recipe['origin_place']) || !empty($recipe['origin_map_embed_url'])): ?>
+        <div class="sidebar-card bordered">
+          <h3 class="sidebar-title">Origin</h3>
+          <?php if (!empty($recipe['origin_place'])): ?>
+            <p class="origin-place"><strong>Region:</strong> <?= h($recipe['origin_place']) ?></p>
+          <?php endif; ?>
+          <?= embed_origin_map($recipe); ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($recipe['video_url'])): ?>
+      <div class="sidebar-card bordered">
+        <h3 class="sidebar-title">Video</h3>
+        <?= embed_youtube_if_any($recipe['video_url']); ?>
       </div>
-    <?php endif; ?>
+      <?php endif; ?>
+    </aside>
   </section>
+    <?php if (!empty($related)) { ?>
+  <?php
+    // Tránh trùng & tránh hiện món đang xem
+    $seen_ids   = [];
+    $rendered   = 0;
+    $current_id = isset($recipe['recipe_id']) ? (int)$recipe['recipe_id'] : 0;
+  ?>
+  <section class="container related bordered" id="related">
+    <h2 class="block-title">You might also like</h2>
+    <div class="cards-grid">
+      <?php foreach ($related as $r) { 
+        // Bỏ nếu thiếu id
+        if (!isset($r['recipe_id'])) continue;
+        $rid = (int)$r['recipe_id'];
+
+        // 1) Bỏ món hiện tại
+        if ($rid === $current_id) continue;
+
+        // 2) Bỏ trùng
+        if (isset($seen_ids[$rid])) continue;
+        $seen_ids[$rid] = true;
+
+        // 3) Giới hạn 6 card (phòng trường hợp truy vấn trả >6)
+        if ($rendered >= 6) break;
+        $rendered++;
+
+        // 4) Tạm gán $recipe = $r để template dùng
+        $__orig_recipe = $recipe ?? null;
+        $recipe = $r;
+        include __DIR__ . '/../app/views/recipe_card.php';
+        $recipe = $__orig_recipe;
+      } ?>
+    </div>
+  </section>
+<?php } ?>
+
+
+
 </main>
+
+<style>
+  .container{ max-width: var(--max-width, 1100px); margin:0 auto; padding:0 16px; }
+  .muted{ color:#6f6b68; }
+
+  /* HERO */
+  .recipe-hero{ background:#f7efe8; padding:28px 0 24px; }
+  .hero-grid{ display:grid; grid-template-columns: 1.2fr 1fr; gap:24px; align-items:start; }
+  .recipe-title{ font-family:var(--font-heading,'Montserrat',sans-serif); font-size:44px; margin:0 0 10px; }
+  .recipe-cats .chip{ display:inline-block; background:#fff; border:1px solid #ddd; border-radius:999px; padding:6px 12px; margin:0 8px 8px 0; font-size:12px; }
+  .recipe-desc{ font-size:18px; line-height:1.65; margin:10px 0; color:#4b4745; }
+  .meta-list{ display:flex; flex-wrap:wrap; gap:12px; list-style:none; padding:0; margin:16px 0 0; }
+  .meta-list li{ background:#fff; border:1px solid #e6e1dc; border-radius:12px; padding:8px 12px; font-size:14px; }
+
+  .hero-img{ width:100%; border-radius:18px; box-shadow:var(--shadow,0 6px 18px rgba(14,14,14,0.06)); }
+
+  /* Mini cards under meta to fill space */
+  .mini-cards{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:16px; }
+  .mini-card{ background:#fff; border:1px solid #e6e1dc; border-radius:14px; padding:12px 14px; }
+  .mini-title{ font-weight:800; margin-bottom:8px; color:#35312f; }
+  .mini-list{ margin:0; padding-left:16px; display:grid; gap:6px; font-size:14px; }
+  .mini-more{ display:inline-block; margin-top:8px; font-size:13px; text-decoration:underline; }
+
+  /* Main grid below */
+  .main-grid{ display:grid; grid-template-columns: 3fr 2fr; gap:24px; padding:24px 0 40px; }
+  .bordered{ background:#f9f6f2; border:1.5px solid #e3d9d1; border-radius:14px; padding:18px; }
+
+  /* Tips (stacked) */
+  .tips-heading{ font-family:var(--font-heading,'Montserrat',sans-serif); font-size:26px; font-weight:800; margin:0 0 12px; }
+  .tips-col{ margin-top:6px; }
+  .tips-label{ font-weight:900; letter-spacing:.02em; margin:4px 0 6px; }
+  .tips-label--do,
+  .tips-label--dont{
+    color:#ff6f48;
+  }
+  .tips-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
+  .tips-list li{ line-height:1.55; }
+  .tips-list li strong{ font-weight:800; }
+
+  /* Instructions */
+  .instructions-title{ font-family:var(--font-heading,'Montserrat',sans-serif); font-size:34px; line-height:1; margin:0 0 10px; font-weight:900; letter-spacing:.02em; }
+  .instructions-intro{ color:#6f6b68; font-size:16px; margin:8px 0 10px; }
+  .section-heading{ margin:18px 0 8px; font-weight:800; text-transform:uppercase; font-size:18px; }
+  .section-heading.accent{ color:#ff6f48; }
+  .section-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
+  .instructions-full{ margin-top:16px; }
+
+  /* Ingredients & Equipment (full sections) */
+  .block-title{ font-size:22px; font-weight:900; margin:0 0 10px; }
+  .ingredients-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
+
+  .cards-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px,1fr));
+    gap:16px;
+  }
+  .card{
+    display:block;
+    background:#fff;
+    border:1px solid #e6e1dc;
+    border-radius:14px;
+    overflow:hidden;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .card:hover{ transform:translateY(-2px); box-shadow:0 6px 18px rgba(14,14,14,.06); }
+  .card .thumb{ aspect-ratio:16/10; background:#f3efe9; }
+  .card .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .card .meta{ padding:10px 12px; }
+  .card .meta .title{ font-weight:700; line-height:1.3; margin:0 0 4px; color:#35312f; }
+  .card .meta .sub{ font-size:13px; color:#6f6b68; display:flex; gap:6px; }
+
+  #related{ margin-top: 12px; }
+
+  /* Sidebar */
+  .sidebar-card{ margin-bottom:18px; }
+  .sidebar-title{ font-size:18px; font-weight:800; margin:0 0 10px; }
+  .map-embed, .video-embed{ width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:#eee; }
+  .map-embed iframe, .video-embed iframe{ width:100%; height:100%; border:0;}
+  .origin-place { margin: 0 0 8px; color:#4b4745; }
+  @media (max-width: 980px){
+    .hero-grid{ grid-template-columns: 1fr; }
+    .main-grid{ grid-template-columns: 1fr; }
+    .mini-cards{ grid-template-columns: 1fr; }
+  }
+</style>
 
 <?php include __DIR__ . '/../app/views/footer.php'; ?>

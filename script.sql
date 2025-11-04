@@ -7,8 +7,6 @@ CREATE TABLE users (
   user_id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
-  email_verified TINYINT(1) DEFAULT 0,
-  verify_token VARCHAR(64) DEFAULT NULL,
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(100),
   bio TEXT,
@@ -25,31 +23,50 @@ CREATE TABLE categories (
   description TEXT
 );
 
--- 3) RECIPES (TỐI GIẢN: mô tả, instructions đầy đủ, và DOs/DON’Ts gộp 1 trường)
+-- 3) RECIPES (thêm origin_* để hiển thị bản đồ vùng xuất xứ)
 CREATE TABLE recipes (
   recipe_id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT,
-  title VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) NOT NULL UNIQUE,
 
-  -- mô tả, SEO
-  description TEXT,                 -- mô tả ngắn trên hero
+  title VARCHAR(255) NOT NULL,
+  slug  VARCHAR(255) NOT NULL UNIQUE,
+
+  -- mô tả & SEO
+  description TEXT,
   meta_description VARCHAR(255),
   keywords VARCHAR(255),
 
-  -- hero & time/servings
-  main_image_url VARCHAR(255),      -- chỉ 1 ảnh đại diện (gallery bỏ)
+  -- media & thời gian
+  main_image_url VARCHAR(255),
   prep_time VARCHAR(50),
   cook_time VARCHAR(50),
   total_time VARCHAR(50),
-  servings VARCHAR(50),
+
+  -- analytics
+  views INT NOT NULL DEFAULT 0,
+
   difficulty ENUM('easy','medium','hard') DEFAULT 'easy',
   is_featured BOOLEAN DEFAULT FALSE,
 
   -- nội dung chi tiết
-  instructions_intro TEXT NULL,     -- đoạn mở đầu phần INSTRUCTIONS (tuỳ chọn)
-  instructions TEXT NOT NULL,       -- hướng dẫn đầy đủ, định dạng bằng \n hoặc dấu đầu dòng
-  dos_donts TEXT NULL,              -- DOs/DON’Ts gộp 1 trường (viết theo bullet)
+  instructions_intro TEXT NULL,
+  instructions TEXT NOT NULL,
+
+  -- chỉ dẫn theo giai đoạn
+  prep_instructions TEXT NULL,
+  cook_instructions TEXT NULL,
+
+  -- tips
+  do_tips   TEXT NULL,
+  dont_tips TEXT NULL,
+
+  -- video
+  video_url VARCHAR(255) NULL,
+
+  -- === Location: vùng xuất xứ/khai sinh món ăn ===
+  origin_place VARCHAR(150) NULL,      
+  origin_zoom  TINYINT UNSIGNED NULL DEFAULT 11,  -- mức zoom 8..13
+  origin_map_embed_url VARCHAR(255) NULL,  -- nếu dùng My Maps: https://www.google.com/maps/d/embed?mid=...
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -66,19 +83,29 @@ CREATE TABLE recipe_categories (
   FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE CASCADE
 );
 
--- 5) INGREDIENTS (giữ chuẩn hoá để render danh sách đẹp)
+-- 5) INGREDIENTS (1-n cho mỗi recipe)
 CREATE TABLE recipe_ingredients (
   id INT AUTO_INCREMENT PRIMARY KEY,
   recipe_id INT NOT NULL,
-  name VARCHAR(120) NOT NULL,   -- "lemon", "garlic"
-  quantity VARCHAR(40) NULL,    -- "2", "1 tbsp"
-  unit VARCHAR(24) NULL,        -- "g", "tbsp", ...
-  note VARCHAR(120) NULL,       -- "minced", "sliced"
+  name VARCHAR(120) NOT NULL,
+  quantity VARCHAR(40) NULL,
+  unit VARCHAR(24) NULL,
+  note VARCHAR(120) NULL,
   sort_order INT DEFAULT 0,
   FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE
 );
 
--- 6) EQUIPMENT (tuỳ chọn)
+-- 6) INSTRUCTION SECTIONS
+CREATE TABLE recipe_instruction_sections (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  recipe_id INT NOT NULL,
+  section_title VARCHAR(120) NOT NULL,
+  section_body  TEXT NOT NULL,  -- dùng \n cho bullet
+  sort_order INT DEFAULT 0,
+  FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE
+);
+
+-- 7) EQUIPMENT (tuỳ chọn)
 CREATE TABLE recipe_equipment (
   id INT AUTO_INCREMENT PRIMARY KEY,
   recipe_id INT NOT NULL,
@@ -87,46 +114,6 @@ CREATE TABLE recipe_equipment (
   FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE
 );
 
--- 7) NUTRITION (tuỳ chọn)
-CREATE TABLE recipe_nutrition (
-  recipe_id INT PRIMARY KEY,
-  calories INT,
-  protein_g DECIMAL(6,2),
-  fat_g DECIMAL(6,2),
-  carbs_g DECIMAL(6,2),
-  note VARCHAR(255),
-  FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE
-);
-
--- 8) STORES (Where to buy) + mapping
-CREATE TABLE stores (
-  store_id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  address VARCHAR(255),
-  google_maps_url VARCHAR(255),
-  latitude DECIMAL(10,8),
-  longitude DECIMAL(11,8),
-  phone VARCHAR(20),
-  store_type ENUM('supermarket','butcher','market','online') NULL,
-  price_level TINYINT NULL
-);
-
-CREATE TABLE recipe_stores (
-  recipe_id INT NOT NULL,
-  store_id INT NOT NULL,
-  PRIMARY KEY (recipe_id, store_id),
-  FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE,
-  FOREIGN KEY (store_id) REFERENCES stores(store_id) ON DELETE CASCADE
-);
-
--- 9) SUBSCRIBERS
-CREATE TABLE subscribers (
-  subscriber_id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(100) NOT NULL UNIQUE,
-  subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 10) CONTACT MESSAGES
 CREATE TABLE contact_messages (
   message_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -134,28 +121,4 @@ CREATE TABLE contact_messages (
   subject VARCHAR(255),
   message TEXT NOT NULL,
   received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 11) COMMENTS (nếu cần)
-CREATE TABLE comments (
-  comment_id INT AUTO_INCREMENT PRIMARY KEY,
-  recipe_id INT NOT NULL,
-  user_id INT,
-  guest_name VARCHAR(100),
-  comment_text TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  parent_comment_id INT,
-  FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
-  FOREIGN KEY (parent_comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE
-);
-
--- 12) PASSWORD RESET (tuỳ chọn)
-CREATE TABLE password_resets (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  token VARCHAR(255) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 30 MINUTE),
-  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );

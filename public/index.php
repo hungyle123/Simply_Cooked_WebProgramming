@@ -1,8 +1,16 @@
 <?php
 $page_title = 'Simple Cooked - Home';
 $active = 'home';
-include __DIR__ . '/../app/views/header.php';
+
 include __DIR__ . '/../config/db.php';
+
+$route = $_GET['route'] ?? '';
+if ($route === 'ajax.search') {
+  require_once __DIR__ . '/../app/controller/search_controller.php';
+  search_recipes_json($conn);
+  exit;
+}
+include __DIR__ . '/../app/views/header.php';
 include __DIR__ . '/../app/function/recipe_functions.php';
 
 // lấy category từ URL (nếu có)

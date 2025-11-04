@@ -122,13 +122,17 @@ function keep_params(array $extra = []) {
       </div>
 
       <!-- Thanh tìm kiếm + sắp xếp -->
-      <form method="get" class="login-row-2col" style="margin-top:10px; gap:12px;">
+      <form id="recipesSearchForm" method="get" class="login-row-2col" style="margin-top:10px; gap:12px;">
         <input type="hidden" name="cat" value="<?= htmlspecialchars($cat) ?>">
         <input type="hidden" name="page" value="1"><!-- reset về page 1 khi apply/sort -->
-        <div class="form-group" style="grid-column:1 / 3;">
+
+        <div class="form-group" style="grid-column:1 / 3; position:relative;">
           <label for="q">Search recipes</label>
           <input id="q" name="q" type="text" placeholder="Search by title or keyword…"
-                 value="<?= htmlspecialchars($q) ?>">
+                value="<?= htmlspecialchars($q) ?>">
+
+          <!-- THÊM MỚI: dropdown gợi ý nhỏ gọn (bám theo input) -->
+          <ul id="recipesSuggestList" class="suggest-compact" style="display:none;"></ul>
         </div>
         <div class="form-group">
           <label for="sort">Sort by</label>
@@ -219,4 +223,69 @@ function keep_params(array $extra = []) {
       });
     }
   });
+</script>
+
+<script>
+(function attachRecipesAjaxSearch(){
+  const input = document.getElementById('q');                // ô search sẵn có
+  const list  = document.getElementById('recipesSuggestList');
+  const form  = document.getElementById('recipesSearchForm');
+  if (!input || !list || !form) return;
+
+  // KHÔNG chặn submit: Enter vẫn submit GET như cũ
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+  async function run(){
+    const q = input.value.trim();
+    if (!q){ list.innerHTML=''; list.style.display='none'; return; }
+
+    try{
+      const url = 'index.php?route=ajax.search&q=' + encodeURIComponent(q) + '&limit=6';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0){
+        list.innerHTML = '<li class="muted">No results</li>';
+        list.style.display = 'block';
+        return;
+      }
+
+      list.innerHTML = data.map(function(it){
+        const href = it.slug ? ('recipe.php?slug=' + encodeURIComponent(it.slug))
+                             : ('recipe.php?id=' + encodeURIComponent(it.recipe_id || ''));
+        const meta = [it.prep_time ? ('Prep ' + it.prep_time) : null,
+                      it.cook_time ? ('Cook ' + it.cook_time) : null]
+                      .filter(Boolean).join(' • ');
+        return `<li><a href="${href}" tabindex="0">
+                  <span class="t">${(it.title||'Untitled')}</span>
+                  ${meta ? `<span class="m">${meta}</span>` : ''}
+                </a></li>`;
+      }).join('');
+      list.style.display = 'block';
+    } catch(e){
+      list.innerHTML = '<li class="muted">Error</li>';
+      list.style.display = 'block';
+      console.error(e);
+    }
+  }
+
+  const runDebounced = debounce(run, 200);
+  input.addEventListener('input', runDebounced);
+  input.addEventListener('focus', runDebounced);
+
+  // Ẩn dropdown khi click ra ngoài
+  document.addEventListener('click', function(e){
+    if (!list.contains(e.target) && e.target !== input){ list.style.display='none'; }
+  });
+
+  // Điều hướng bằng phím ↑ ↓ ngay trong list (không ảnh hưởng Enter submit form)
+  input.addEventListener('keydown', function(e){
+    const items = Array.from(list.querySelectorAll('li a'));
+    if (!items.length) return;
+    const idx = items.findIndex(a => a === document.activeElement);
+    if (e.key === 'ArrowDown'){ e.preventDefault(); (items[idx+1]||items[0]).focus(); }
+    if (e.key === 'ArrowUp'){   e.preventDefault(); (items[idx-1]||items[items.length-1]).focus(); }
+  });
+})();
 </script>

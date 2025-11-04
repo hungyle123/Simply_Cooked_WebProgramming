@@ -43,9 +43,31 @@ if (session_status() === PHP_SESSION_NONE) {
           </button>
 
           <?php if (!empty($_SESSION['user'])): ?>
-              <span style="font-size:14px;font-weight:600;color:#111; padding:10px 0;">
-                  Hi, <?= htmlspecialchars($_SESSION['user']['username']) ?>
-              </span>
+              <?php if (!empty($_SESSION['user_id'])): ?>
+                <div class="header-actions">
+                  <!-- ... các nút khác ... -->
+                  <div class="user-menu">
+                    <button class="header-auth-btn light">Hi, <?= htmlspecialchars($_SESSION['user']['username']?? 'User') ?></button>
+                    <div class="user-dropdown" style="position:relative">
+                      <ul class="user-dropdown-menu" style="position:absolute;right:0;top:100%;background:#fff;border:1px solid #e2dfdb;border-radius:12px;box-shadow:var(--shadow);padding:8px;list-style:none;margin:8px 0;min-width:220px;display:none">
+                        <li><a class="btn" href="/Individual_website/project/public/recipe_new.php" style="display:block">➕ Add a new recipe</a></li>
+                        <li><a class="btn" href="/Individual_website/project/public/logout.php" style="display:block">Log out</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <script>
+                  // mở/đóng dropdown đơn giản
+                  (function(){
+                    const btn = document.querySelector('.user-menu .header-auth-btn');
+                    const menu = document.querySelector('.user-dropdown-menu');
+                    if(btn && menu){
+                      btn.addEventListener('click',()=>menu.style.display = (menu.style.display==='block'?'none':'block'));
+                      document.addEventListener('click',(e)=>{ if(!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display='none';});
+                    }
+                  })();
+                </script>
+              <?php endif; ?>
               <a class="header-auth-btn light" href="logout.php">Logout</a>
           <?php else: ?>
               <a class="header-auth-btn light" href="login.php">Log in</a>

@@ -23,7 +23,7 @@ include __DIR__ . '/../app/views/header.php';
           Join me on a gastronomic journey where each dish carries a story,
           and every recipe is a crafted symphony of taste.
         </p>
-        <a href="/recipes.php" class="btn-primary">Explore Recipes</a>
+        <a href="recipes.php" class="btn-primary">Explore Recipes</a>
       </div>
     </div>
   </section>

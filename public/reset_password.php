@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '../../config/db.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $page_title = "Choose New Password - Cooks Delight";
 $active = '';
-include __DIR__ . '/app/views/header.php';
+include __DIR__ . '/../app/views/header.php';
 ?>
 
 <main class="site-main">
@@ -92,4 +92,4 @@ include __DIR__ . '/app/views/header.php';
   </section>
 </main>
 
-<?php include __DIR__ . '/app/views/footer.php'; ?>
+<?php include __DIR__ . '/../app/views/footer.php'; ?>

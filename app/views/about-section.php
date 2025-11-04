@@ -8,7 +8,7 @@
         to delivering delightful culinary experiences. Join us in savoring the essence 
         of every dish and the stories that unfold.
       </p>
-      <a href="/about.php" class="about-btn">Read More</a>
+      <a href="aboutus.php" class="about-btn">Read More</a>
     </div>
 
     <div class="about-gallery">

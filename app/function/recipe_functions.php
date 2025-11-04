@@ -6,7 +6,7 @@ function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
     if ($categorySlug) {
         $sql = "
             SELECT r.recipe_id, r.title, r.main_image_url, r.prep_time, r.cook_time, r.total_time,
-                   r.servings, r.is_featured, r.meta_description
+                   r.views, r.is_featured, r.meta_description
             FROM recipes r
             JOIN recipe_categories rc ON r.recipe_id = rc.recipe_id
             JOIN categories c ON rc.category_id = c.category_id
@@ -20,7 +20,7 @@ function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
         // Không có category → lấy tất cả
         $sql = "
             SELECT recipe_id, title, main_image_url, prep_time, cook_time, total_time,
-                   servings, is_featured, meta_description
+                   views, is_featured, meta_description
             FROM recipes
             ORDER BY created_at DESC
             LIMIT ?

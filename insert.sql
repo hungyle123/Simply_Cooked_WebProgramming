@@ -257,14 +257,3 @@ INSERT INTO recipe_ingredients (recipe_id, name, quantity, unit, note, sort_orde
 (@r_mousse,'Dark chocolate','200','g',NULL,1),
 (@r_mousse,'Whipping cream','300','ml',NULL,2),
 (@r_mousse,'Sugar','50','g',NULL,3);
-
--- 6) Stores & mapping
-INSERT INTO stores (name, address, google_maps_url, latitude, longitude, phone, store_type, price_level) VALUES
-('GreenMarket Supermart', '12 Nguyen Trai, District 1, HCMC', 'https://maps.google.com/?q=12+Nguyen+Trai+HCMC', 10.770000, 106.700000, '028-0000-1111', 'supermarket', 2),
-('Fresh Farm Butcher', '88 Le Loi, District 1, HCMC', 'https://maps.google.com/?q=88+Le+Loi+HCMC', 10.773500, 106.703800, '028-0000-2222', 'butcher', 3),
-('Sunrise Market',      '35 Nguyen Hue, District 1, HCMC', 'https://maps.google.com/?q=35+Nguyen+Hue+HCMC', 10.773900, 106.704900, '028-0000-3333', 'market', 2);
-
-INSERT IGNORE INTO recipe_stores (recipe_id, store_id)
-SELECT @r_chicken, s.store_id FROM stores s WHERE s.name IN ('GreenMarket Supermart','Fresh Farm Butcher');
-INSERT IGNORE INTO recipe_stores (recipe_id, store_id)
-SELECT @r_salmon,  s.store_id FROM stores s WHERE s.name IN ('GreenMarket Supermart','Sunrise Market');
