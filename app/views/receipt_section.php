@@ -1,6 +1,39 @@
 <?php
-// app/views/receipt_section.php
-// Hiển thị danh sách công thức từ DB: dùng $recipes_home (một mảng các recipe)
+require_once __DIR__ . '/../../config/db.php';
+
+/** cat = all|breakfast|lunch|dinner (mặc định all) */
+$cat = strtolower(trim($_GET['cat'] ?? 'all'));
+$allowed = ['all','breakfast','lunch','dinner'];
+if (!in_array($cat, $allowed, true)) $cat = 'all';
+
+/** Hàm render 1 card (tận dụng file view có sẵn) */
+function render_recipe_card(array $r) {
+  include __DIR__ . '/recipe_card.php'; // dùng $r
+}
+
+if ($cat === 'all') {
+  $sql = "
+    SELECT r.*
+    FROM recipes r
+    ORDER BY r.is_featured DESC, r.created_at DESC
+    LIMIT 6";
+  $stmt = $conn->prepare($sql);
+} else {
+  // lọc theo slug category
+  $sql = "
+    SELECT r.*
+    FROM recipes r
+    JOIN recipe_categories rc ON rc.recipe_id = r.recipe_id
+    JOIN categories c ON c.category_id = rc.category_id
+    WHERE c.slug = ?
+    ORDER BY r.is_featured DESC, r.created_at DESC
+    LIMIT 6";
+  $stmt = $conn->prepare($sql);
+  $stmt->bind_param('s', $cat);
+}
+
+$stmt->execute();
+$res = $stmt->get_result();
 ?>
 
 <section class="recipes-section">
@@ -41,58 +74,10 @@
 
     <!-- Cards Grid -->
     <div class="cards-grid">
-
-      <?php if (!empty($recipes_home) && is_array($recipes_home)): ?>
-        <?php foreach ($recipes_home as $r): ?>
-          <article class="recipe-card">
-            <a href="/recipe.php?id=<?php echo htmlspecialchars($r['id']); ?>" class="recipe-link">
-              <div class="recipe-media">
-                <img 
-                  src="<?php echo htmlspecialchars($r['main_image_url']); ?>" 
-                  alt="<?php echo htmlspecialchars($r['title']); ?>">
-
-                <?php
-                  // Badge logic cơ bản
-                  $badge_text = !empty($r['is_featured']) ? 'CHEF PICK' : 'NEW';
-                ?>
-                <span class="badge">
-                  <?php echo htmlspecialchars($badge_text); ?>
-                </span>
-              </div>
-
-              <div class="recipe-body">
-                <h3 class="recipe-title">
-                  <?php echo htmlspecialchars($r['title']); ?>
-                </h3>
-
-                <p class="recipe-excerpt">
-                  <?php echo htmlspecialchars($r['excerpt']); ?>
-                </p>
-
-                <div class="recipe-meta">
-                  <span class="meta-item">
-                    <?php echo htmlspecialchars($r['time_display']); ?>
-                  </span>
-                  <span class="meta-item">
-                    <?php echo htmlspecialchars($r['difficulty']); ?>
-                  </span>
-                  <span class="meta-item">
-                    <?php echo htmlspecialchars($r['servings_display']); ?>
-                  </span>
-                </div>
-
-                <div class="recipe-cta">
-                  <span class="btn-small">VIEW RECIPE</span>
-                </div>
-              </div>
-            </a>
-          </article>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <p>No recipes found.</p>
-      <?php endif; ?>
-
-    </div><!-- /.cards-grid -->
+      <?php while ($r = $res->fetch_assoc()): ?>
+        <?php render_recipe_card($r); ?>
+      <?php endwhile; ?>
+    </div>
 
   </div><!-- /.container -->
 </section>

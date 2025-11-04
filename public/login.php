@@ -5,8 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!empty($_SESSION['user'])) {
-    // nếu đã đăng nhập rồi thì đưa về home
-    header('Location: /index.php');
+    header('Location: index.php');
     exit;
 }
 
@@ -30,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'email'    => $umail,
                 ];
                 $stmt->close();
-                header('Location: /index.php');
+                header('Location: index.php');
                 exit;
             } else {
                 $error = 'Incorrect password.';
@@ -48,17 +47,23 @@ include __DIR__ . '/../app/views/header.php';
 ?>
 
 <main class="site-main">
-  <section class="contact-section" style="max-width: 100%; margin: 0 auto;">
-    <div class="contact-header">
-      <h1>Welcome back</h1>
-      <p>Log in to continue exploring delicious ideas.</p>
-    </div>
+  <section class="login-wrapper">
+    <form method="POST" class="login-card">
 
-    <?php if ($error): ?>
-      <div class="alert error"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
+      <!-- HEADER TRONG CARD -->
+      <div class="login-head">
+        <h1>WELCOME BACK</h1>
+        <p>Log in to continue exploring delicious ideas.</p>
 
-    <form method="POST" class="contact-form login-form" style="grid-template-columns:1fr;">
+        <?php if ($error): ?>
+          <div class="alert error" style="margin-top:12px;">
+            <?= htmlspecialchars($error) ?>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- HÀNG 2 CỘT: EMAIL + PASSWORD -->
+      <div class="login-row-2col">
         <div class="form-group">
           <label>Email *</label>
           <input type="email" name="email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
@@ -68,47 +73,40 @@ include __DIR__ . '/../app/views/header.php';
           <label>Password *</label>
           <input type="password" name="password" required>
         </div>
+      </div>
 
-        <div class="form-actions" style="text-align:right;">
-          <button class="btn-primary" type="submit">Log In</button>
+      <!-- NÚT LOGIN -->
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">LOG IN</button>
+      </div>
+
+      <!-- PHẦN FORGOT / SIGNUP / SOCIAL -->
+      <div class="auth-block">
+        <div class="auth-row-split">
+          <div class="auth-inline-text">
+            <span>Forgot your password?
+              <a href="forgot_password.php" class="auth-link-accent">Reset here</a>
+            </span>
+          </div>
+
+          <div class="auth-inline-text">
+            <span>Don't have an account?
+              <a href="register.php" class="auth-link-accent">Sign up</a>
+            </span>
+          </div>
         </div>
 
-        <!-- TẤT CẢ phần dưới gom vào 1 khối duy nhất -->
-        <div class="auth-block">
+        <div class="auth-divider">
+          <span>or continue with</span>
+        </div>
 
-          <!-- hàng forgot / signup -->
-          <div class="auth-row-split">
-            <div class="auth-inline-text">
-              <span>Forgot your password?
-                <a href="forgot_password.php" class="auth-link-accent">Reset here</a>
-              </span>
-            </div>
+        <a href="auth/google_start.php" class="social-btn social-google">
+          <img src="assets/google.svg" alt="Google icon">
+          Continue with Google
+        </a>
+      </div><!-- /auth-block -->
 
-            <div class="auth-inline-text">
-              <span>Don't have an account?
-                <a href="register.php" class="auth-link-accent">Sign up</a>
-              </span>
-            </div>
-          </div>
-
-          <!-- divider -->
-          <div class="auth-divider">
-            <span>or continue with</span>
-          </div>
-
-          <!-- social buttons -->
-          <div class="auth-social-row">
-            <a class="social-btn social-google" href="oauth_google.php">
-              Google
-            </a>
-
-            <a class="social-btn social-facebook" href="oauth_facebook.php">
-              Facebook
-            </a>
-          </div>
-
-        </div><!-- /auth-block -->
-      </form>
+    </form>
   </section>
 </main>
 

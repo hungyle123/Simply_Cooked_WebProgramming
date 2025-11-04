@@ -1,37 +1,33 @@
 <?php
-// recipe_card.php
-if (!isset($recipe) || !is_array($recipe)) {
-    return;
-}
-
-$show_button = $show_button ?? true;
-$img = !empty($recipe['image']) ? $recipe['image'] : '/public/assets/images/placeholder.png';
-$tags = isset($recipe['tags']) && is_array($recipe['tags']) ? $recipe['tags'] : [];
+// vẫn giữ đoạn bảo vệ biến nếu bạn đang truyền $r
+if (!isset($recipe) && isset($r)) { $recipe = $r; }
+$slug   = htmlspecialchars($recipe['slug']);
+$title  = htmlspecialchars($recipe['title']);
+$img    = htmlspecialchars($recipe['main_image_url'] ?? '');
+$desc   = htmlspecialchars($recipe['meta_description'] ?? '');
 ?>
-<article class="recipe-card">
-  <a href="/recipe.php?id=<?php echo urlencode($recipe['id']); ?>" class="recipe-link">
-    <div class="recipe-media">
-      <img src="<?php echo htmlspecialchars($img); ?>" alt="<?php echo htmlspecialchars($recipe['title']); ?>">
-      <?php if(in_array('vegan', $tags)): ?>
-        <span class="badge badge-top">VEGAN</span>
-      <?php endif; ?>
+<div class="recipe-card">
+  <div class="recipe-card-media">
+    <img class="recipe-card-img" src="<?php echo $img; ?>" alt="<?php echo $title; ?>" loading="lazy">
+    <?php if (!empty($recipe['is_featured'])): ?>
+      <span class="badge-pill badge-orange">CHEF PICK</span>
+    <?php endif; ?>
+  </div>
+
+  <div class="recipe-card-body">
+    <h3 class="recipe-card-title">
+      <a class="recipe-card-link" href="recipe.php?slug=<?php echo $slug; ?>">
+        <?php echo $title; ?>
+      </a>
+    </h3>
+    <p class="recipe-card-desc"><?php echo $desc; ?></p>
+
+    <div class="recipe-card-meta">
+      <?php if (!empty($recipe['total_time'])): ?><span><?php echo htmlspecialchars($recipe['total_time']); ?></span><?php endif; ?>
+      <?php if (!empty($recipe['prep_time'])): ?><span><?php echo htmlspecialchars($recipe['prep_time']); ?> PREP</span><?php endif; ?>
+      <?php if (!empty($recipe['servings'])): ?><span><?php echo htmlspecialchars($recipe['servings']); ?></span><?php endif; ?>
     </div>
 
-    <div class="recipe-body">
-      <h3 class="recipe-title"><?php echo htmlspecialchars($recipe['title']); ?></h3>
-      <p class="recipe-excerpt"><?php echo htmlspecialchars($recipe['excerpt'] ?? ''); ?></p>
-
-      <div class="recipe-meta">
-        <span class="meta-item"><?php echo htmlspecialchars($recipe['cook_time'] ?? '—'); ?></span>
-        <span class="meta-item"><?php echo htmlspecialchars($recipe['difficulty'] ?? ''); ?></span>
-        <span class="meta-item"><?php echo htmlspecialchars($recipe['servings'] ?? ''); ?></span>
-      </div>
-
-      <?php if ($show_button): ?>
-        <div class="recipe-cta">
-          <a class="btn btn-small" href="/recipe.php?id=<?php echo urlencode($recipe['id']); ?>">View Recipe</a>
-        </div>
-      <?php endif; ?>
-    </div>
-  </a>
-</article>
+    <a class="btn-view" href="recipe.php?slug=<?php echo $slug; ?>">VIEW RECIPE</a>
+  </div>
+</div>

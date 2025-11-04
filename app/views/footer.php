@@ -12,7 +12,7 @@
 
       <nav class="footer-nav">
         <a href="index.php">Home</a>
-        <a href="/recipes.php">Recipes</a>
+        <a href="recipes.php">Recipes</a>
         <a href="contact.php">Contact</a>
         <a href="aboutus.php">About Us</a>
       </nav>

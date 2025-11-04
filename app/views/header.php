@@ -24,13 +24,13 @@ if (session_status() === PHP_SESSION_NONE) {
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <a href="/"><img src="assets/cooking_logo.png" alt="Simply Cooked" class="logo"><span class="brand-text">Simply Cooked</span></a>
+        <a href=""><img src="assets/cooking_logo.png" alt="Simply Cooked" class="logo"><span class="brand-text">Simply Cooked</span></a>
       </div>
 
       <nav class="main-nav" aria-label="Primary Navigation">
         <ul class="nav-list">
           <li><a href="index.php" class="<?php if(!isset($active) || $active==='home') echo 'active'; ?>">Home</a></li>
-          <li><a href="/recipes.php" class="<?php if(isset($active) && $active==='recipes') echo 'active'; ?>">Recipes</a></li>
+          <li><a href="recipes.php" class="<?php if(isset($active) && $active==='recipes') echo 'active'; ?>">Recipes</a></li>
           <li><a href="contact.php" class="<?php if(isset($active) && $active==='contact') echo 'active'; ?>">Contact</a></li>
           <li><a href="aboutus.php" class="<?php if(isset($active) && $active==='about') echo 'active'; ?>">About Us</a></li>
         </ul>

@@ -89,3 +89,13 @@
     flex-direction: row;
   }
 }
+
+@media (max-width: 600px) {
+  .login-row-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px){
+  .recipe-layout{ grid-template-columns: 1fr; }
+}

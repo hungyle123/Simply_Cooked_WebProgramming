@@ -1,8 +1,8 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-$_SESSION = [];
+session_start();
+session_unset();
 session_destroy();
-header('Location: /index.php');
+
+// Sau khi logout xong, quay về trang chủ
+header('Location: index.php');
 exit;
