@@ -182,6 +182,35 @@ function ingredient_line($ing){
   return $line;
 }
 ?>
+
+<?php
+// ===== Breadcrumbs for recipe detail (absolute URLs) =====
+$primaryCat = isset($cats[0]) ? $cats[0] : null;
+
+// Home → luôn về trang chủ public
+$breadcrumbs = [
+  ['label' => 'Home',    'url' => BASE_URL . 'index.php'],
+  // Recipes → luôn về danh sách tất cả (reset filter)
+  ['label' => 'Recipes', 'url' => BASE_URL . 'recipes.php'],
+];
+
+// Category → về trang danh sách theo cat và reset q/sort/page
+if ($primaryCat && !empty($primaryCat['slug'])) {
+  $catSlug = strtolower($primaryCat['slug']);
+  $breadcrumbs[] = [
+    'label' => $primaryCat['name'],
+    'url'   => BASE_URL . 'recipes.php?cat=' . urlencode($catSlug) . '&q=&sort=newest&page=1',
+  ];
+}
+
+// Current recipe (không phải link)
+$breadcrumbs[] = ['label' => $recipe['title'] ?? 'Recipe', 'url' => null];
+
+include dirname(__DIR__) . '/app/views/breadcrumb.php';
+?>
+
+
+
 <main class="site-main">
   <!-- HERO -->
   <section class="recipe-hero">

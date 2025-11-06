@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title><?php echo isset($page_title) ? htmlspecialchars($page_title) : 'Simply Cooked'; ?></title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/cooking_logo.png">
 
   <!-- Google fonts -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,8 +51,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     <button class="header-auth-btn light">Hi, <?= htmlspecialchars($_SESSION['user']['username']?? 'User') ?></button>
                     <div class="user-dropdown" style="position:relative">
                       <ul class="user-dropdown-menu" style="position:absolute;right:0;top:100%;background:#fff;border:1px solid #e2dfdb;border-radius:12px;box-shadow:var(--shadow);padding:8px;list-style:none;margin:8px 0;min-width:220px;display:none">
-                        <li><a class="btn" href="/Individual_website/project/public/recipe_new.php" style="display:block">➕ Add a new recipe</a></li>
-                        <li><a class="btn" href="/Individual_website/project/public/logout.php" style="display:block">Log out</a></li>
+                        <li><a class="btn" href="/Individual_website/project/public/recipe_new.php" style="display:block">Add a new recipe</a></li>
                       </ul>
                     </div>
                   </div>

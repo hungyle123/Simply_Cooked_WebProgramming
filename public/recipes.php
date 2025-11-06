@@ -92,13 +92,26 @@ function keep_params(array $extra = []) {
 
 <main class="site-main">
   <!-- Breadcrumb -->
-  <div class="container breadcrumb">
-    <ul>
-      <li><a href="index.php">Home</a></li>
-      <li>/</li>
-      <li><strong>Recipes</strong></li>
-    </ul>
-  </div>
+  <?php
+    // Breadcrumb động theo category (?cat)
+    $breadcrumbs = [
+      ['label' => 'Home',    'url' => BASE_URL . 'index.php'],
+      ['label' => 'Recipes', 'url' => ($cat !== 'all' ? BASE_URL . 'recipes.php' : null)],
+    ];
+
+    if ($cat !== 'all') {
+      $catLabels = ['breakfast' => 'Breakfast', 'lunch' => 'Lunch', 'dinner' => 'Dinner'];
+      $catLabel  = $catLabels[$cat] ?? ucfirst($cat);
+      // về đúng danh sách cat, đồng thời reset q/sort/page
+      $breadcrumbs[] = [
+        'label' => $catLabel,
+        'url'   => BASE_URL . 'recipes.php?cat=' . urlencode($cat) . '&q=&sort=newest&page=1',
+      ];
+    }
+
+    include dirname(__DIR__) . '/app/views/breadcrumb.php';
+  ?>
+
 
   <!-- Header của trang Recipes -->
   <section class="container recipes-section">

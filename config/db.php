@@ -4,7 +4,10 @@ define('DB_SERVER', 'localhost');
 define('DB_USERNAME', 'root');
 define('DB_PASSWORD', '');
 define('DB_NAME', 'cooks_delight_db');
-define('BASE_URL', '/');
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$dir    = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\'); // ví dụ: /Individual_website/project/public
+define('BASE_URL', $scheme . '://' . $host . $dir . '/'); // => http://localhost/Individual_website/project/public/
 
 $conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
