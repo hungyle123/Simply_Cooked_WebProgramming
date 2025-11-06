@@ -17,16 +17,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email === '' || $pass === '') {
         $error = 'Please enter email and password.';
     } else {
-        $stmt = $conn->prepare("SELECT user_id, username, email, password_hash FROM users WHERE email = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT user_id, username, email, password_hash, role FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
-        $stmt->bind_result($uid, $uname, $umail, $hash);
+        $stmt->bind_result($uid, $uname, $umail, $hash, $role);
         if ($stmt->fetch()) {
             if (password_verify($pass, $hash)) {
+                $_SESSION['user_id'] = (int)$uid; // QUAN TRỌNG: top-level
                 $_SESSION['user'] = [
-                    'user_id'  => $uid,
+                    'user_id'  => (int)$uid,
                     'username' => $uname,
                     'email'    => $umail,
+                    'role'     => $role ?: 'user',
                 ];
                 $stmt->close();
                 header('Location: index.php');

@@ -2,7 +2,7 @@ USE cooks_delight_db;
 
 -- ===================== USERS =====================
 INSERT INTO users
-(username, email, password_hash, full_name, bio, profile_image_url)
+(username, email, password_hash, full_name, bio, profile_image_url, role)
 VALUES
 (
   'isabela_russo',
@@ -10,7 +10,8 @@ VALUES
   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
   'Isabela Russo',
   'In the world of pots and pans, I am on a mission to turn everyday meals into memorable moments. I believe cooking is equal parts craft and storytelling, where ingredients become characters and technique creates the plot. At Cooks Delight, I focus on approachable recipes with chef-level results, from quick weeknights to slow-weekend roasts. When I am not testing sauces, I am writing guides that demystify kitchen science so home cooks can shine.',
-  '/images/isabela.jpg'
+  '/images/isabela.jpg',
+  'admin'  -- Isabela làm admin
 ),
 (
   'marco_lee',
@@ -18,7 +19,8 @@ VALUES
   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
   'Marco Lee',
   'I am the team’s food stylist and photo wrangler, obsessed with natural light and honest textures. My philosophy is that a good picture should teach you how the food ought to look at every step, not just at the end. I document tests, tiny tweaks, and plating choices so readers can replicate the same finish at home. When the oven is on, my camera is too—capturing the sizzle, the steam, and the story.',
-  '/images/marco.jpg'
+  '/images/marco.jpg',
+  'user'
 ),
 (
   'sophia_kim',
@@ -26,9 +28,18 @@ VALUES
   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
   'Sophia Kim',
   'I edit our recipes for clarity and reliability, turning messy notes into step-by-step roadmaps. My background in technical writing meets a lifelong love for baking, so I sweat the details: gram weights, oven behavior, and substitution logic. I maintain our testing logs and quality checks to keep instructions consistent across the site. If a direction feels effortless to follow, that means my job worked.',
-  '/images/sophia.jpg'
+  '/images/sophia.jpg',
+  'user'
+),
+(
+  'admin',
+  'admin@cooksdelight.local',
+  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- = "password"
+  'Site Admin',
+  'Administrator account for Cooks Delight (dev only).',
+  NULL,
+  'admin'
 );
-
 -- ===================== CATEGORIES =====================
 INSERT INTO categories (name, slug) VALUES
 ('Breakfast','breakfast'),('Lunch','lunch'),('Dinner','dinner')

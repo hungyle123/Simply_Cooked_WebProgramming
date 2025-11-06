@@ -1782,3 +1782,28 @@ body {
   color: #1a1a1a;       /* đen */
   font-weight: 700;     /* bold */
 }
+
+
+/* User dropdown spacing & hover */
+.user-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;               /* tạo khoảng cách giữa các item */
+  padding: 8px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+.user-dropdown-menu a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #222;
+  margin: 2px;
+}
+
+.user-dropdown-menu a:hover {
+  background: #f3f3f3;
+}

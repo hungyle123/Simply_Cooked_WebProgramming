@@ -25,14 +25,12 @@
         ├── db.php
         ├── oauth.php
     └── 📁public
-        └── 📁assets
         └── 📁auth
             ├── google_callback.php
             ├── google_start.php
         └── 📁css
             ├── responsive.css
             ├── style.css
-        └── 📁images
         └── 📁js
             ├── main.js
         ├── aboutus.php
