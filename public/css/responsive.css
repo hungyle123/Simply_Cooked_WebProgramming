@@ -1,28 +1,29 @@
-/* responsive.css */
+/* ===============================
+   RESPONSIVE.CSS - Simply Cooked
+   =============================== */
 
-@media (max-width: 1024px){
-  .cards-grid{grid-template-columns:repeat(2,1fr)}
-  .hero h1{font-size:40px}
-  .header-inner{gap:8px}
+/* ---------- Large Tablets (≤1024px) ---------- */
+@media (max-width: 1024px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hero h1 {
+    font-size: 40px;
+  }
+  .header-inner {
+    gap: 8px;
+  }
 }
 
-@media (max-width: 800px){
-  .nav-list{display:none}
-  .mobile-only{display:inline-flex}
-  .cta-inner{flex-direction:column;align-items:flex-start}
-  .cards-grid{grid-template-columns:1fr}
-  .hero .hero-panel{flex-direction:column;align-items:flex-start}
-  .footer-inner{flex-direction:column;gap:14px;align-items:flex-start}
+/* ---------- Tablets (≤960px) ---------- */
+@media (max-width: 960px) {
+  .recipe-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* mobile drawer & modal full height */
-@media (max-width:420px){
-  .logo{height:36px}
-  .hero h1{font-size:28px}
-  .subscribe-form input{width:100%}
-  .mobile-drawer-inner{width:100%}
-}
-/* Responsive Welcome */
+/* ---------- Tablets & Small Laptops (≤900px) ---------- */
+/* Welcome section */
 @media (max-width: 900px) {
   .welcome-inner {
     flex-direction: column;
@@ -31,71 +32,97 @@
   .welcome-left h1 {
     font-size: 38px;
   }
-}
 
-
-/* Responsive */
-@media (max-width: 900px) {
+  /* About Us layout */
   .aboutus-inner {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-
   .aboutus-photo-box {
     height: auto;
   }
-
   .aboutus-gallery {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 480px) {
-  .aboutus-gallery {
+/* ---------- Tablets & Mobiles (≤800px) ---------- */
+@media (max-width: 800px) {
+  /* Hide desktop nav, show mobile button */
+  .nav-list {
+    display: none;
+  }
+  .mobile-only {
+    display: inline-flex;
+  }
+
+  /* Layout adjustments */
+  .cta-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .cards-grid {
     grid-template-columns: 1fr;
   }
-  .aboutus-gallery-item {
-    height: 200px;
+  .hero .hero-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .footer-inner {
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  /* Header actions — hide on mobile */
+  .header-actions #searchToggle,
+  .header-actions .header-auth-btn,
+  .header-actions .user-menu {
+    display: none !important;
+  }
+
+  /* Still show mobile menu toggle (☰) */
+  #mobileMenuToggle {
+    display: inline-flex;
   }
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .aboutus-inner {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  .aboutus-photo-box {
-    height: auto;
-  }
-
-  .aboutus-gallery {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .aboutus-gallery {
-    grid-template-columns: 1fr;
-  }
-  .aboutus-gallery-item {
-    height: 200px;
-  }
-}
-/* nếu form rộng hơn (ví dụ sau này trên desktop full width), cho nó nằm ngang */
-@media(min-width:600px){
-  .auth-social-row {
-    flex-direction: row;
-  }
-}
-
+/* ---------- Small Mobiles (≤600px) ---------- */
 @media (max-width: 600px) {
   .login-row-2col {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 960px){
-  .recipe-layout{ grid-template-columns: 1fr; }
+/* ---------- Extra Small Mobiles (≤480px) ---------- */
+@media (max-width: 480px) {
+  .aboutus-gallery {
+    grid-template-columns: 1fr;
+  }
+  .aboutus-gallery-item {
+    height: 200px;
+  }
+}
+
+/* ---------- Very Small Screens (≤420px) ---------- */
+@media (max-width: 420px) {
+  .logo {
+    height: 36px;
+  }
+  .hero h1 {
+    font-size: 28px;
+  }
+  .subscribe-form input {
+    width: 100%;
+  }
+  .mobile-drawer-inner {
+    width: 100%;
+  }
+}
+
+/* ---------- Auth Social Row (≥600px) ---------- */
+@media (min-width: 600px) {
+  .auth-social-row {
+    flex-direction: row;
+  }
 }

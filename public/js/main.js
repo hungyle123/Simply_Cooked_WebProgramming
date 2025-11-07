@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-  // Elements
   const mobileToggle = document.getElementById('mobileMenuToggle');
   const mobileMenu = document.getElementById('mobileMenu');
   const mobileClose = document.getElementById('mobileMenuClose');
@@ -12,14 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
 
-  // openMobileMenu: open mobile menu
   function openMobileMenu() {
     mobileMenu.classList.add('show');
     mobileMenu.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
   }
 
-  // closeMobileMenu: close mobile menu
   function closeMobileMenu() {
     mobileMenu.classList.remove('show');
     mobileMenu.setAttribute('aria-hidden', 'true');
@@ -29,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (mobileToggle) mobileToggle.addEventListener('click', openMobileMenu);
   if (mobileClose) mobileClose.addEventListener('click', closeMobileMenu);
 
-  // openSearch: open search modal
   function openSearch() {
     if (!searchModal) return;
     searchModal.classList.add('show');
@@ -38,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.style.overflow = 'hidden';
   }
 
-  // closeSearch: close search modal
   function closeSearch() {
     if (!searchModal) return;
     searchModal.classList.remove('show');
@@ -62,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (e.target === mobileMenu) closeMobileMenu();
   });
 
-  // handleSearchSubmit: AJAX search submit
   function handleSearchSubmit(ev) {
     ev.preventDefault();
     const q = (searchInput && searchInput.value.trim()) || '';
@@ -105,38 +99,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (searchForm) {
     searchForm.addEventListener('submit', handleSearchSubmit);
-  }
-
-  const subscribeForm = document.getElementById('subscribeForm');
-
-  // handleSubscribeSubmit: AJAX subscribe submit
-  function handleSubscribeSubmit(ev) {
-    ev.preventDefault();
-    const emailEl = document.getElementById('subscribeEmail');
-    const email = emailEl ? emailEl.value.trim() : '';
-    if (!email) {
-      alert('Please enter a valid email.');
-      return;
-    }
-
-    fetch(subscribeForm.action, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'email=' + encodeURIComponent(email)
-    })
-      .then(r => r.json())
-      .then(resp => {
-        if (resp && resp.success) {
-          alert('Thank you! You have been subscribed.');
-          subscribeForm.reset();
-        } else {
-          alert(resp && resp.message ? resp.message : 'Subscription failed.');
-        }
-      })
-      .catch(() => alert('Subscription failed.'));
-  }
-
-  if (subscribeForm) {
-    subscribeForm.addEventListener('submit', handleSubscribeSubmit);
   }
 });

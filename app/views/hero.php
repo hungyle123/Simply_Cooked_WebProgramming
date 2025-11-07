@@ -10,7 +10,7 @@
         Explore a world of flavors, discover handcrafted recipes,
         and let the aroma of our passion for cooking fill your kitchen.
       </p>
-      <a href="/recipes.php" class="btn-primary">Explore Recipes</a>
+      <a href="recipes.php" class="btn-primary">Explore Recipes</a>
     </div>
   </div>
 </section>
