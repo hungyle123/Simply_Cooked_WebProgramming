@@ -5,10 +5,36 @@ if (session_status() === PHP_SESSION_NONE) {
 ?>
 <!doctype html>
 <html lang="en">
+<!doctype html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title><?php echo isset($page_title) ? htmlspecialchars($page_title) : 'Simply Cooked'; ?></title>
+
+  <?php
+    // ===== SEO: dynamic title & description (with fallbacks) =====
+    $site_name     = 'Cooks Delight';
+    $default_title = 'Cooks Delight — Discover and cook delightful recipes';
+    $default_desc  = 'Explore curated recipes with clear instructions, time estimates, and tips.';
+
+    // Ưu tiên: $meta_title -> $page_title -> $default_title
+    $__title = isset($meta_title) && $meta_title !== ''
+        ? $meta_title
+        : (isset($page_title) && $page_title !== '' ? $page_title : $default_title);
+
+    // Ưu tiên: $meta_description -> $page_desc -> $default_desc
+    $__desc = isset($meta_description) && $meta_description !== ''
+        ? $meta_description
+        : (isset($page_desc) && $page_desc !== '' ? $page_desc : $default_desc);
+  ?>
+
+  <title><?= htmlspecialchars($__title) ?></title>
+  <meta name="description" content="<?= htmlspecialchars($__desc) ?>">
+
+  <?php if (!empty($canonical_url)): ?>
+    <link rel="canonical" href="<?= htmlspecialchars($canonical_url) ?>">
+  <?php endif; ?>
+
   <link rel="icon" type="image/png" sizes="32x32" href="assets/cooking_logo.png">
 
   <!-- Google fonts -->
@@ -16,16 +42,20 @@ if (session_status() === PHP_SESSION_NONE) {
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
   <!-- Main styles -->
-  <link rel="stylesheet" href="css\style.css">
-  <link rel="stylesheet" href="css\responsive.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
 
   <meta name="theme-color" content="#f7efe8">
 </head>
+
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <a href=""><img src="assets/cooking_logo.png" alt="Simply Cooked" class="logo"><span class="brand-text">Simply Cooked</span></a>
+        <a href="index.php">
+          <img src="assets/cooking_logo.png" alt="Simply Cooked" class="logo">
+          <span class="brand-text">Simply Cooked</span>
+        </a>
       </div>
 
       <nav class="main-nav" aria-label="Primary Navigation">
@@ -38,6 +68,9 @@ if (session_status() === PHP_SESSION_NONE) {
       </nav>
 
       <div class="header-actions">
+        <button id="mobileMenuToggle" class="icon-btn mobile-only" aria-label="Open menu">
+          <img src="assets/icons8-menu-25.png" alt="" class="icon">
+        </button>
         <!-- Search button -->
         <button class="icon-btn" id="searchToggle" aria-label="Search">
           <img src="assets/Search.png" alt="Search">

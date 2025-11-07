@@ -2,10 +2,6 @@
 // /public/recipe.php
 require_once __DIR__ . '/../config/db.php';
 
-$active = '';
-$page_title = "Recipe - Cooks Delight";
-include __DIR__ . '/../app/views/header.php';
-
 /* ===================== Input ===================== */
 $rid  = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
@@ -43,6 +39,20 @@ function render_titled_bullet_html($line){
     return '<strong>'.h(trim($parts[0])).':</strong> '.h(trim($parts[1]));
   }
   return h($line);
+}
+function ingredient_line($ing){
+  $line = '';
+  if (isset($ing['quantity']) && $ing['quantity'] !== null && $ing['quantity'] !== '') {
+    $line .= h($ing['quantity']).' ';
+  }
+  if (!empty($ing['unit'])) {
+    $line .= h($ing['unit']).' ';
+  }
+  $line .= h($ing['name'] ?? '');
+  if (!empty($ing['note'])) {
+    $line .= ' — '.h($ing['note']);
+  }
+  return $line;
 }
 function embed_youtube_if_any($url){
   if(!$url) return '';
@@ -103,6 +113,14 @@ if (!$recipe) {
   http_response_code(404);
   echo "<main class='site-main container'><p>Recipe not found.</p></main>";
   include __DIR__ . '/../app/views/footer.php';
+  exit;
+}
+
+/* ===================== Preferred URL (slug) ===================== */
+// Nếu user truy cập bằng id (có ?id=...) mà recipe có slug -> chuyển 301 sang dạng slug
+if (!empty($recipe['slug']) && isset($_GET['id']) && !isset($_GET['slug'])) {
+  $target = BASE_URL . 'recipe.php?slug=' . urlencode($recipe['slug']);
+  header('Location: ' . $target, true, 301);
   exit;
 }
 
@@ -170,20 +188,37 @@ if ($q) $sections = $q->fetch_all(MYSQLI_ASSOC);
 
 
 /* ===================== Derived ===================== */
-$page_title = h($recipe['title']) . " - Cooks Delight";
+$recipe_title = trim((string)($recipe['title'] ?? ''));
 
-/* small helper to print ingredient line */
-function ingredient_line($ing){
-  $line = '';
-  if ($ing['quantity']!==null && $ing['quantity']!=='') $line .= h($ing['quantity']).' ';
-  if ($ing['unit']) $line .= h($ing['unit']).' ';
-  $line .= h($ing['name']);
-  if ($ing['note']) $line .= ' — '.h($ing['note']);
-  return $line;
+// Title cho body (nếu nơi khác dùng)
+$page_title = h($recipe_title) . " - Cooks Delight";
+
+// ===== SEO: Meta Title & Meta Description (động) =====
+$meta_title = $recipe_title !== ''
+  ? ($recipe_title . ' — Cooks Delight')
+  : 'Recipe — Cooks Delight';
+
+if (!empty($recipe['meta_description'])) {
+  $meta_description = $recipe['meta_description'];
+} else {
+  $raw = trim((string)($recipe['description'] ?? ''));
+  $raw = preg_replace('/\s+/', ' ', $raw); // rút gọn khoảng trắng
+  $meta_description = $raw !== ''
+    ? $raw
+    : 'Step-by-step instructions, ingredients, timing and helpful tips for this recipe.';
 }
-?>
 
-<?php
+// ===== Canonical URL =====
+// Ưu tiên slug; nếu chưa có slug trong DB thì fallback sang id (không redirect)
+if (!empty($recipe['slug'])) {
+  $canonical_url = BASE_URL . 'recipe.php?slug=' . urlencode($recipe['slug']);
+} else {
+  $canonical_url = BASE_URL . 'recipe.php?id=' . (int)$recipe['recipe_id'];
+}
+
+// === Include header sau khi đã có biến SEO ===
+include __DIR__ . '/../app/views/header.php';
+
 // ===== Breadcrumbs for recipe detail (absolute URLs) =====
 $primaryCat = isset($cats[0]) ? $cats[0] : null;
 

@@ -4,7 +4,9 @@
         └── 📁controller
             ├── contact_controller.php
             ├── recipe_store.php
+            ├── recipe_update.php
             ├── search_controller.php
+            ├── user_update.php
         └── 📁function
             ├── recipe_functions.php
         └── 📁model
@@ -16,11 +18,9 @@
             ├── header.php
             ├── hero.php
             ├── mobile_menu.php
-            ├── palette-section.php
             ├── receipt_section.php
             ├── recipe_card.php
             ├── search_modal.php
-            ├── subscribe_cta.php
     └── 📁config
         ├── db.php
         ├── oauth.php
@@ -33,6 +33,7 @@
             ├── style.css
         └── 📁js
             ├── main.js
+        ├── .htaccess
         ├── aboutus.php
         ├── contact.php
         ├── forgot_password.php
@@ -44,6 +45,8 @@
         ├── recipes.php
         ├── register.php
         ├── reset_password.php
+        ├── robots.php
+        ├── sitemap.xml.php
     └── 📁resources
     └── 📁storage
     └── 📁vender

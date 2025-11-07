@@ -24,7 +24,7 @@
         <button id="mobileSearchOpen" class="icon-btn" aria-label="Search">
           <img src="assets/search_mobile.png" alt="Search" class="icon">
         </button>
-        <a href="/subscribe.php" class="subscribe-btn-mobile">Subscribe</a>
+        <a href="register.php" class="subscribe-btn-mobile" aria-label="Sign up">Sign up</a>
       </div>
 
       <div class="mobile-socials">

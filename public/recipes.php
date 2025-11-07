@@ -1,8 +1,5 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
-$page_title = "Recipes - Simply Cooked";
-$active = 'recipes';
-include __DIR__ . '/../app/views/header.php';
 
 /** --- Input (GET) --- */
 $cat  = strtolower(trim($_GET['cat'] ?? 'all'));                 // all|breakfast|lunch|dinner
@@ -89,6 +86,54 @@ function keep_params(array $extra = []) {
   return '?' . http_build_query($params);
 }
 ?>
+
+<?php
+// ==== SEO for recipes listing ====
+// (đảm bảo $cat, $q đã có ở các dòng trên)
+$humanCat = [
+  'all' => 'All',
+  'breakfast' => 'Breakfast',
+  'lunch' => 'Lunch',
+  'dinner' => 'Dinner'
+][$cat] ?? ucfirst($cat);
+
+// (tuỳ chọn) title cho body
+$page_title = 'Recipes — Cooks Delight';
+
+// highlight tab trong header
+$active = 'recipes';
+
+if ($cat !== 'all' && $q !== '') {
+  $meta_title = "Recipes: {$humanCat} · Search “{$q}” — Cooks Delight";
+  $meta_description = "Browse {$humanCat} recipes matching “{$q}”. Filter and sort to find dishes fast with clear steps and timing.";
+} elseif ($cat !== 'all') {
+  $meta_title = "Recipes: {$humanCat} — Cooks Delight";
+  $meta_description = "Discover {$humanCat} recipes with prep/cook times and step-by-step instructions.";
+} elseif ($q !== '') {
+  $meta_title = "Recipes · Search “{$q}” — Cooks Delight";
+  $meta_description = "Explore recipes matching “{$q}”. Use filters and sorting to pinpoint what you need.";
+} else {
+  $meta_title = "Browse Recipes — Cooks Delight";
+  $meta_description = "Explore all recipes with filters, search and sorting. Clear instructions, timing, and handy tips.";
+}
+
+// ===== Canonical for listing =====
+// Giữ tham số "cat" (nếu khác 'all') và "page" (nếu >1) — BỎ q/sort khỏi canonical
+$canon_params = [];
+if (isset($cat) && $cat !== 'all') {
+  $canon_params['cat'] = $cat;
+}
+if (isset($page) && (int)$page > 1) {
+  $canon_params['page'] = (int)$page;
+}
+
+$canonical_url = BASE_URL . 'recipes.php' . ($canon_params ? ('?' . http_build_query($canon_params)) : '');
+
+// === Include header sau khi đã có biến SEO ===
+include __DIR__ . '/../app/views/header.php';
+?>
+
+
 
 <main class="site-main">
   <!-- Breadcrumb -->

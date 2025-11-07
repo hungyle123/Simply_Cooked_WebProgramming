@@ -94,10 +94,6 @@ include __DIR__ . '/../app/views/header.php';
       <div class="aboutus-gallery-item"><img src="images/recipe_tomato_basil_pasta.jpg" alt="Food content filmed on phone"></div>
     </div>
   </section>
-
-  <div class="container">
-    <?php include __DIR__ . '/../app/views/subscribe_cta.php'; ?>
-  </div>
 </main>
 
 <?php include __DIR__ . '/../app/views/footer.php'; ?>

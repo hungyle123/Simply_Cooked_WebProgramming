@@ -1807,3 +1807,45 @@ body {
 .user-dropdown-menu a:hover {
   background: #f3f3f3;
 }
+
+/* === Mobile header rescue === */
+#mobileMenuToggle {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+#mobileMenu {
+  display: show;              /* JS sẽ thêm .show để bật */
+  position: fixed;
+  inset: 0;
+  z-index: 1000;              /* cao hơn hero/banner */
+  background: rgba(0,0,0,.55);
+}
+
+#mobileMenu .panel {
+  position: absolute;
+  top: 0; left: 0;
+  width: 82%;
+  max-width: 360px;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+}
+
+@media (max-width: 800px) {
+  .header-actions #searchToggle,
+  .header-actions .header-auth-btn,
+  .header-actions .user-menu {
+    display: none !important;
+  }
+
+  /* vẫn giữ nút ☰ hiện ra để mở menu */
+  #mobileMenuToggle {
+    display: inline-flex;
+  }
+}
