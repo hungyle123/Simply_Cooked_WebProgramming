@@ -8,37 +8,11 @@ $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 
 /* ===================== Helpers ===================== */
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-function bullets_from_text($text){
-  $lines = preg_split('/\R/', (string)$text);
-  $out = [];
-  foreach ($lines as $ln){
-    $ln = trim($ln);
-    if ($ln === '') continue;
-
-    // Strip bullet/gạch/số đầu dòng: • · ‣ ● - * – —  hoặc  "1." / "2)"
-    // Lưu ý: dùng mã Unicode hex cho en/em dash: \x{2013}, \x{2014}
-    $ln = preg_replace(
-      '/^\s*(?:[\x{2022}\x{00B7}\x{2023}\x{25CF}\-\*\x{2013}\x{2014}]+|\d+\s*[.)])\s*/u',
-      '',
-      $ln
-    );
-
-    if ($ln !== '') $out[] = $ln;
-  }
-  return $out;
-}
 function split_paragraphs($text){
   $parts = preg_split('/\R{2,}|\n{1,}/', (string)$text);
   $out = [];
   foreach($parts as $p){ $p = trim($p); if($p!=='') $out[] = $p; }
   return $out;
-}
-function render_titled_bullet_html($line){
-  $parts = explode(':', trim($line), 2);
-  if(count($parts)===2){
-    return '<strong>'.h(trim($parts[0])).':</strong> '.h(trim($parts[1]));
-  }
-  return h($line);
 }
 function ingredient_line($ing){
   $line = '';
@@ -69,18 +43,24 @@ function embed_origin_map(array $recipe){
   $mymap = trim((string)($recipe['origin_map_embed_url'] ?? ''));
 
   if ($mymap !== '') {
-    // Ưu tiên My Maps (đường dẫn đã là /maps/d/embed?...):
     $src = htmlspecialchars($mymap, ENT_QUOTES, 'UTF-8');
   } elseif ($place !== '') {
-    // Fallback: dùng q=<place>&z=<zoom>&output=embed
     $q   = urlencode($place);
     $z   = max(1, min(20, $zoom ?: 11));
     $src = "https://www.google.com/maps?q={$q}&z={$z}&output=embed";
   } else {
-    return ''; // Không có dữ liệu để nhúng
+    return '';
   }
 
   return '<div class="map-embed"><iframe src="'.$src.'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" width="100%" height="100%" style="border:0;" allowfullscreen></iframe></div>';
+}
+function fmt_minutes($m){
+  if ($m === null || $m === '' ) return null;
+  $m = (int)$m;
+  if ($m < 60) return $m . ' mins';
+  $h = intdiv($m, 60);
+  $r = $m % 60;
+  return $r ? "{$h}h {$r}m" : "{$h}h";
 }
 
 /* ===================== Load recipe ===================== */
@@ -117,7 +97,6 @@ if (!$recipe) {
 }
 
 /* ===================== Preferred URL (slug) ===================== */
-// Nếu user truy cập bằng id (có ?id=...) mà recipe có slug -> chuyển 301 sang dạng slug
 if (!empty($recipe['slug']) && isset($_GET['id']) && !isset($_GET['slug'])) {
   $target = BASE_URL . 'recipe.php?slug=' . urlencode($recipe['slug']);
   header('Location: ' . $target, true, 301);
@@ -129,10 +108,12 @@ $rid = (int)$recipe['recipe_id'];
 $conn->query("UPDATE recipes SET views = views + 1 WHERE recipe_id = {$rid} LIMIT 1");
 
 /* ===================== Load related data ===================== */
-// ==== RELATED: recipes cùng category, trừ chính nó ====
+// RELATED: recipes cùng category, trừ chính nó
 $related = [];
 if ($rid > 0) {
-  $sqlRel = "SELECT r.recipe_id, r.title, r.slug, r.main_image_url, r.total_time, r.difficulty, r.is_featured, r.views, r.created_at
+  $sqlRel = "SELECT r.recipe_id, r.title, r.slug, r.main_image_url,
+                    r.total_minutes AS total_time,  /* alias để không vỡ view cũ */
+                    r.difficulty, r.is_featured, r.views, r.created_at
     FROM recipes r
     JOIN recipe_categories rc ON rc.recipe_id = r.recipe_id
     WHERE rc.category_id IN (
@@ -148,10 +129,11 @@ if ($rid > 0) {
     $related = $st->get_result()->fetch_all(MYSQLI_ASSOC);
     $st->close();
   }
-  // Fallback: nếu chưa có món cùng category, lấy 6 món mới nhất (trừ chính nó)
   if (!$related) {
     $q = $conn->query("
-      SELECT recipe_id, title, slug, main_image_url, total_time, difficulty, is_featured, views, created_at
+      SELECT recipe_id, title, slug, main_image_url,
+             total_minutes AS total_time, /* alias để không vỡ view cũ */
+             difficulty, is_featured, views, created_at
       FROM recipes
       WHERE recipe_id <> {$rid}
       ORDER BY created_at DESC
@@ -161,6 +143,7 @@ if ($rid > 0) {
   }
 }
 
+// Categories
 $cats = [];
 $q = $conn->query("SELECT c.name, c.slug
                    FROM recipe_categories rc
@@ -168,6 +151,7 @@ $q = $conn->query("SELECT c.name, c.slug
                    WHERE rc.recipe_id = {$rid}");
 if ($q) $cats = $q->fetch_all(MYSQLI_ASSOC);
 
+// Ingredients
 $ingredients = [];
 $q = $conn->query("SELECT name, quantity, unit, note, sort_order
                    FROM recipe_ingredients
@@ -175,25 +159,73 @@ $q = $conn->query("SELECT name, quantity, unit, note, sort_order
                    ORDER BY sort_order ASC, id ASC");
 if ($q) $ingredients = $q->fetch_all(MYSQLI_ASSOC);
 
+// Equipment
 $equipment = [];
-$q = $conn->query("SELECT name, sort_order FROM recipe_equipment WHERE recipe_id={$rid} ORDER BY sort_order ASC, id ASC");
+$q = $conn->query("SELECT name, sort_order
+                   FROM recipe_equipment
+                   WHERE recipe_id={$rid}
+                   ORDER BY sort_order ASC, id ASC");
 if ($q) $equipment = $q->fetch_all(MYSQLI_ASSOC);
 
+// Instruction sections (no section_body) + steps
 $sections = [];
-$q = $conn->query("SELECT section_title, section_body
+$secRows = [];
+$q = $conn->query("SELECT id AS section_id, section_title
                    FROM recipe_instruction_sections
                    WHERE recipe_id = {$rid}
                    ORDER BY sort_order ASC, id ASC");
-if ($q) $sections = $q->fetch_all(MYSQLI_ASSOC);
+if ($q) $secRows = $q->fetch_all(MYSQLI_ASSOC);
+$sections = [];
+$secIds = array_column($secRows, 'section_id');
+if ($secIds) {
+  $idList = implode(',', array_map('intval', $secIds));
+  $steps = [];
+  $q2 = $conn->query("SELECT section_id, step_text, sort_order, id
+                      FROM recipe_instruction_steps
+                      WHERE section_id IN ($idList)
+                      ORDER BY section_id ASC, sort_order ASC, id ASC");
+  if ($q2) $steps = $q2->fetch_all(MYSQLI_ASSOC);
+  // group steps by section_id
+  $bySec = [];
+  foreach ($steps as $s) {
+    $bySec[(int)$s['section_id']][] = $s['step_text'];
+  }
+  foreach ($secRows as $sr) {
+    $sid = (int)$sr['section_id'];
+    $sections[] = [
+      'section_title' => $sr['section_title'],
+      'steps' => $bySec[$sid] ?? []
+    ];
+  }
+}
 
+// Notes (prep/cook/do/dont) từ recipe_notes
+$prep_notes = $cook_notes = $do_notes = $dont_notes = [];
+$q = $conn->query("SELECT content_type, note_text, sort_order, id
+                   FROM recipe_notes
+                   WHERE recipe_id = {$rid}
+                   ORDER BY FIELD(content_type,'prep','cook','do','dont'), sort_order ASC, id ASC");
+if ($q) {
+  while ($row = $q->fetch_assoc()) {
+    $t = $row['content_type'];
+    $txt = trim((string)$row['note_text']);
+    if ($txt === '') continue;
+    switch ($t) {
+      case 'prep':  $prep_notes[]  = $txt; break;
+      case 'cook':  $cook_notes[]  = $txt; break;
+      case 'do':    $do_notes[]    = $txt; break;
+      case 'dont':  $dont_notes[]  = $txt; break;
+    }
+  }
+}
 
 /* ===================== Derived ===================== */
 $recipe_title = trim((string)($recipe['title'] ?? ''));
 
-// Title cho body (nếu nơi khác dùng)
+// Title cho body
 $page_title = h($recipe_title) . " - Cooks Delight";
 
-// ===== SEO: Meta Title & Meta Description (động) =====
+// ===== SEO: Meta Title & Description =====
 $meta_title = $recipe_title !== ''
   ? ($recipe_title . ' — Cooks Delight')
   : 'Recipe — Cooks Delight';
@@ -202,14 +234,13 @@ if (!empty($recipe['meta_description'])) {
   $meta_description = $recipe['meta_description'];
 } else {
   $raw = trim((string)($recipe['description'] ?? ''));
-  $raw = preg_replace('/\s+/', ' ', $raw); // rút gọn khoảng trắng
+  $raw = preg_replace('/\s+/', ' ', $raw);
   $meta_description = $raw !== ''
     ? $raw
     : 'Step-by-step instructions, ingredients, timing and helpful tips for this recipe.';
 }
 
 // ===== Canonical URL =====
-// Ưu tiên slug; nếu chưa có slug trong DB thì fallback sang id (không redirect)
 if (!empty($recipe['slug'])) {
   $canonical_url = BASE_URL . 'recipe.php?slug=' . urlencode($recipe['slug']);
 } else {
@@ -219,17 +250,12 @@ if (!empty($recipe['slug'])) {
 // === Include header sau khi đã có biến SEO ===
 include __DIR__ . '/../app/views/header.php';
 
-// ===== Breadcrumbs for recipe detail (absolute URLs) =====
+// ===== Breadcrumbs for recipe detail =====
 $primaryCat = isset($cats[0]) ? $cats[0] : null;
-
-// Home → luôn về trang chủ public
 $breadcrumbs = [
   ['label' => 'Home',    'url' => BASE_URL . 'index.php'],
-  // Recipes → luôn về danh sách tất cả (reset filter)
   ['label' => 'Recipes', 'url' => BASE_URL . 'recipes.php'],
 ];
-
-// Category → về trang danh sách theo cat và reset q/sort/page
 if ($primaryCat && !empty($primaryCat['slug'])) {
   $catSlug = strtolower($primaryCat['slug']);
   $breadcrumbs[] = [
@@ -237,13 +263,10 @@ if ($primaryCat && !empty($primaryCat['slug'])) {
     'url'   => BASE_URL . 'recipes.php?cat=' . urlencode($catSlug) . '&q=&sort=newest&page=1',
   ];
 }
-
-// Current recipe (không phải link)
 $breadcrumbs[] = ['label' => $recipe['title'] ?? 'Recipe', 'url' => null];
 
 include dirname(__DIR__) . '/app/views/breadcrumb.php';
 ?>
-
 
 
 <main class="site-main">
@@ -268,14 +291,13 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
         <?php endif; ?>
 
         <ul class="meta-list">
-          <?php if ($recipe['prep_time']): ?><li><strong>Prep:</strong> <?= h($recipe['prep_time']) ?></li><?php endif; ?>
-          <?php if ($recipe['cook_time']): ?><li><strong>Cook:</strong> <?= h($recipe['cook_time']) ?></li><?php endif; ?>
-          <?php if ($recipe['total_time']): ?><li><strong>Total:</strong> <?= h($recipe['total_time']) ?></li><?php endif; ?>
+          <?php if (($t = fmt_minutes($recipe['prep_minutes'] ?? null))): ?><li><strong>Prep:</strong> <?= h($t) ?></li><?php endif; ?>
+          <?php if (($t = fmt_minutes($recipe['cook_minutes'] ?? null))): ?><li><strong>Cook:</strong> <?= h($t) ?></li><?php endif; ?>
+          <?php if (($t = fmt_minutes($recipe['total_minutes'] ?? null))): ?><li><strong>Total:</strong> <?= h($t) ?></li><?php endif; ?>
           <li><strong>Difficulty:</strong> <?= h($recipe['difficulty']) ?></li>
           <li><strong>Views:</strong> <?= (int)$recipe['views'] + 1 ?></li>
         </ul>
 
-        <!-- mini cards to fill empty space -->
         <div class="mini-cards">
           <div class="mini-card">
             <div class="mini-title">Ingredients</div>
@@ -317,29 +339,28 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
   <!-- MAIN GRID: left text (tips + instructions), right sidebar (stores + video) -->
   <section class="container main-grid">
     <div class="main-left">
-      <!-- TIPS stacked vertically with bordered box -->
-      <?php if (!empty($recipe['do_tips']) || !empty($recipe['dont_tips'])): ?>
+      <!-- TIPS -->
+      <?php if (!empty($do_notes) || !empty($dont_notes)): ?>
       <section class="tips-block bordered" id="tips">
         <h2 class="tips-heading">Let’s go over the basics — the do’s and don’ts — for <?= h($recipe['title']) ?></h2>
 
-
-        <?php if (!empty($recipe['do_tips'])): ?>
+        <?php if (!empty($do_notes)): ?>
           <div class="tips-col">
             <div class="tips-label tips-label--do">DO’S:</div>
             <ul class="tips-list">
-              <?php foreach (bullets_from_text($recipe['do_tips']) as $line): ?>
-                <li><?= render_titled_bullet_html($line) ?></li>
+              <?php foreach ($do_notes as $line): ?>
+                <li><?= h($line) ?></li>
               <?php endforeach; ?>
             </ul>
           </div>
         <?php endif; ?>
 
-        <?php if (!empty($recipe['dont_tips'])): ?>
+        <?php if (!empty($dont_notes)): ?>
           <div class="tips-col">
             <div class="tips-label tips-label--dont">DON’TS:</div>
             <ul class="tips-list">
-              <?php foreach (bullets_from_text($recipe['dont_tips']) as $line): ?>
-                <li><?= render_titled_bullet_html($line) ?></li>
+              <?php foreach ($dont_notes as $line): ?>
+                <li><?= h($line) ?></li>
               <?php endforeach; ?>
             </ul>
           </div>
@@ -357,21 +378,19 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
           <?php endforeach; ?>
         <?php endif; ?>
 
-        <?php $prepare = bullets_from_text($recipe['prep_instructions'] ?? ''); ?>
-        <?php if ($prepare): ?>
+        <?php if (!empty($prep_notes)): ?>
           <h3 class="section-heading accent">PREHEAT AND PREPARE</h3>
           <ul class="section-list">
-            <?php foreach ($prepare as $line): ?>
+            <?php foreach ($prep_notes as $line): ?>
               <li><?= h($line) ?></li>
             <?php endforeach; ?>
           </ul>
         <?php endif; ?>
 
-        <?php $cook = bullets_from_text($recipe['cook_instructions'] ?? ''); ?>
-        <?php if ($cook): ?>
+        <?php if (!empty($cook_notes)): ?>
           <h3 class="section-heading accent">COOK</h3>
           <ul class="section-list">
-            <?php foreach ($cook as $line): ?>
+            <?php foreach ($cook_notes as $line): ?>
               <li><?= h($line) ?></li>
             <?php endforeach; ?>
           </ul>
@@ -381,24 +400,15 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
           <?php foreach ($sections as $sec): ?>
             <h3 class="section-heading accent"><?= h($sec['section_title']) ?></h3>
             <ul class="section-list">
-              <?php foreach (bullets_from_text($sec['section_body']) as $line): ?>
+              <?php foreach ($sec['steps'] as $line): ?>
                 <li><?= h($line) ?></li>
               <?php endforeach; ?>
             </ul>
           <?php endforeach; ?>
         <?php endif; ?>
-
-        <?php if (!empty($recipe['instructions'])): ?>
-          <details class="instructions-full">
-            <summary>Full text instructions</summary>
-            <?php foreach (split_paragraphs($recipe['instructions']) as $p): ?>
-              <p><?= h($p) ?></p>
-            <?php endforeach; ?>
-          </details>
-        <?php endif; ?>
       </section>
 
-      <!-- Full Ingredients section anchor (for "View full list") -->
+      <!-- Full Ingredients section -->
       <section class="ingredients bordered" id="ingredients">
         <h2 class="block-title">Ingredients</h2>
         <?php if ($ingredients): ?>
@@ -444,43 +454,33 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
       <?php endif; ?>
     </aside>
   </section>
-    <?php if (!empty($related)) { ?>
-  <?php
-    // Tránh trùng & tránh hiện món đang xem
-    $seen_ids   = [];
-    $rendered   = 0;
-    $current_id = isset($recipe['recipe_id']) ? (int)$recipe['recipe_id'] : 0;
-  ?>
-  <section class="container related bordered" id="related">
-    <h2 class="block-title">You might also like</h2>
-    <div class="cards-grid">
-      <?php foreach ($related as $r) { 
-        // Bỏ nếu thiếu id
-        if (!isset($r['recipe_id'])) continue;
-        $rid = (int)$r['recipe_id'];
 
-        // 1) Bỏ món hiện tại
-        if ($rid === $current_id) continue;
+  <?php if (!empty($related)) { ?>
+    <?php
+      $seen_ids   = [];
+      $rendered   = 0;
+      $current_id = isset($recipe['recipe_id']) ? (int)$recipe['recipe_id'] : 0;
+    ?>
+    <section class="container related bordered" id="related">
+      <h2 class="block-title">You might also like</h2>
+      <div class="cards-grid">
+        <?php foreach ($related as $r) {
+          if (!isset($r['recipe_id'])) continue;
+          $rrid = (int)$r['recipe_id'];
+          if ($rrid === $current_id) continue;
+          if (isset($seen_ids[$rrid])) continue;
+          $seen_ids[$rrid] = true;
+          if ($rendered >= 6) break;
+          $rendered++;
 
-        // 2) Bỏ trùng
-        if (isset($seen_ids[$rid])) continue;
-        $seen_ids[$rid] = true;
-
-        // 3) Giới hạn 6 card (phòng trường hợp truy vấn trả >6)
-        if ($rendered >= 6) break;
-        $rendered++;
-
-        // 4) Tạm gán $recipe = $r để template dùng
-        $__orig_recipe = $recipe ?? null;
-        $recipe = $r;
-        include __DIR__ . '/../app/views/recipe_card.php';
-        $recipe = $__orig_recipe;
-      } ?>
-    </div>
-  </section>
-<?php } ?>
-
-
+          $__orig_recipe = $recipe ?? null;
+          $recipe = $r;
+          include __DIR__ . '/../app/views/recipe_card.php';
+          $recipe = $__orig_recipe;
+        } ?>
+      </div>
+    </section>
+  <?php } ?>
 
 </main>
 
@@ -515,9 +515,7 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
   .tips-col{ margin-top:6px; }
   .tips-label{ font-weight:900; letter-spacing:.02em; margin:4px 0 6px; }
   .tips-label--do,
-  .tips-label--dont{
-    color:#ff6f48;
-  }
+  .tips-label--dont{ color:#ff6f48; }
   .tips-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
   .tips-list li{ line-height:1.55; }
   .tips-list li strong{ font-weight:800; }
@@ -528,9 +526,8 @@ include dirname(__DIR__) . '/app/views/breadcrumb.php';
   .section-heading{ margin:18px 0 8px; font-weight:800; text-transform:uppercase; font-size:18px; }
   .section-heading.accent{ color:#ff6f48; }
   .section-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
-  .instructions-full{ margin-top:16px; }
 
-  /* Ingredients & Equipment (full sections) */
+  /* Ingredients & Equipment */
   .block-title{ font-size:22px; font-weight:900; margin:0 0 10px; }
   .ingredients-list{ margin:0; padding-left:18px; display:grid; gap:8px; }
 

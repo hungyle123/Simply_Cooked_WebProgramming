@@ -74,6 +74,11 @@
 
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
+  function fmtMins(n){
+    const v = Number(n);
+    return Number.isFinite(v) && v > 0 ? (v + 'm') : '';
+  }
+
   async function run(){
     const q = input.value.trim();
     if (!q){ list.innerHTML=''; list.style.display='none'; return; }
@@ -97,13 +102,17 @@
         return;
       }
 
-      // Chỉ hiện tên + meta nhỏ
+      // Chỉ hiện tên + meta nhỏ; dùng trường mới: prep_minutes, cook_minutes
       list.innerHTML = data.map(function(it){
         const href = it.slug ? ('recipe.php?slug=' + encodeURIComponent(it.slug))
                              : ('recipe.php?id=' + encodeURIComponent(it.recipe_id || ''));
-        const meta = [it.prep_time ? ('Prep ' + it.prep_time) : null,
-                      it.cook_time ? ('Cook ' + it.cook_time) : null]
-                      .filter(Boolean).join(' • ');
+        const metaParts = [];
+        const prep = fmtMins(it.prep_minutes);
+        const cook = fmtMins(it.cook_minutes);
+        if (prep) metaParts.push('Prep ' + prep);
+        if (cook) metaParts.push('Cook ' + cook);
+        const meta = metaParts.join(' • ');
+
         return `<li><a href="${href}" tabindex="0">
                   <span class="t">${(it.title||'Untitled')}</span>
                   ${meta ? `<span class="m">${meta}</span>` : ''}

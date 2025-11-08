@@ -2,19 +2,18 @@
   --bg: #f7efe8;
   --card: #fff;
   --muted: #8f8a86;
-  --accent: #ff6f48;
-  --accent-dark: #e85b3a;
+  --accent: #4a6fa5;       /* xanh xám nhẹ – trung tính */
+  --accent-dark: #3e5f8f;  /* phiên bản đậm hơn để hover */
   --text: #0f0f0f;
-  --round: 14px;
   --max-width: 1450px;
-  --shadow: 0 6px 18px rgba(14,14,14,0.06);
-  --radius-lg: 18px;
+  --shadow: none;
+  --round: 6px;
+  --radius-lg: 6px;
   --container-padding: 24px;
   --header-height: 80px;
-  --font-heading: 'Montserrat', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 }
-
 * {
   box-sizing: border-box;
 }
@@ -62,9 +61,9 @@ body {
 .btn {
   display: inline-block;
   padding: 10px 16px; border: 0; background: #eee; color: var(--text);
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -72,15 +71,16 @@ body {
 .btn-small {
   padding: 8px 10px; border: 1px solid #e2dfdb; background: transparent;
   font-size: 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
 }
 
 .btn-primary {
   padding: 14px 28px; background: var(--accent); color: #fff;
-  border-radius: 999px;
-  font-weight: 600;
+  border-radius: 12px;
+  font-weight: 500;
   text-decoration: none;
   transition: background 0.2s ease;
+  border: 1px solid var(--accent-dark); /* thêm viền nhẹ */
 }
 
 .btn-primary:hover {
@@ -118,7 +118,7 @@ body {
 }
 
 .brand-text {
-  font-weight: 700;
+  font-weight: 500;
   font-family: var(--font-heading);
 }
 
@@ -136,9 +136,9 @@ body {
 }
 
 .nav-list a {
-  padding: 8px 6px; color: var(--muted); border-bottom: 3px solid transparent;
+  padding: 8px 6px; color: var(--muted);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -146,7 +146,6 @@ body {
 .nav-list a:hover {
   color: var(--text);
   border-bottom: 3px solid var(--accent);
-  padding-bottom: 5px;
 }
 
 .header-actions {
@@ -162,17 +161,12 @@ body {
   cursor: pointer;
 }
 
-.subscribe-btn {
-  padding: 10px 14px; background: #111; color: #fff;
-  border-radius: 999px;
-}
-
 /* AUTH BUTTONS IN HEADER */
 .header-auth-btn {
   padding: 10px 14px;
   display: inline-block;
-  border-radius: 999px;
-  font-weight: 600;
+  border-radius: var(--round);
+  font-weight: 500;
   font-size: 14px;
   line-height: 1.2;
   text-decoration: none;
@@ -195,42 +189,13 @@ body {
 .header-auth-btn.dark:hover {
   background: #000;
 }
-
-/* =================================================
-   HERO
-================================================= */
-.hero {
-  padding: 28px 0; background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
-}
-
-.hero .hero-panel {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-}
-
-.hero .left {
-  flex: 1;
-}
-
-.hero h1 {
-  margin: 0; color: #111;
-  font-family: var(--font-heading);
-  font-size: 48px;
-  line-height: 1;
-}
-
-.hero p {
-  color: var(--muted);
-  max-width: 560px;
-}
-
 /* =================================================
    RECIPE CARD
 ================================================= */
-.cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 14px; }
+.cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 14px;}
 
-.recipe-card { background: var(--card,#fff); border-radius: 16px; box-shadow: var(--shadow,0 6px 18px rgba(14,14,14,.06)); overflow: hidden; }
+.recipe-card { background: var(--card,#fff); border-radius: var(--radius-lg); box-shadow: var(--shadow,0 6px 18px rgba(14,14,14,.06)); overflow: hidden;
+}
 
 .recipe-card-media { position: relative; }
 .recipe-card-img { width: 100%; height: 260px; display: block; object-fit: cover; }
@@ -244,11 +209,14 @@ body {
 }
 
 .badge-pill { padding: 6px 12px; background: #eee; position: absolute; left: 16px; top: 16px;
-  border-radius: 999px; font-size: 12px; font-weight: 700; }
+  border-radius: var(--round); font-size: 12px; font-weight: 500; }
 .badge-orange { background: var(--accent,#ff6f48); color: #fff; }
 
 .recipe-body {
   padding: 24px;
+  display: flex;             /* để đẩy CTA xuống đáy */
+  flex-direction: column;
+  min-height: 180px;         /* số này giúp các card cân hơn, có thể chỉnh 160–200 */
 }
 
 .recipe-card-body { padding: 18px 20px; }
@@ -289,113 +257,16 @@ body {
 .recipe-cta {
   margin-top: auto;
 }
-
-/* =================================================
-   SUBSCRIBE CTA (orange pill section)
-================================================= */
-.subscribe-cta {
-  padding: 80px 0; background: #ff6f48; color: #fff; margin: 60px 0;
-  position: relative;
-  border-radius: 28px;
-  text-align: center;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.subscribe-cta::before,
-.subscribe-cta::after {
-  content: "";
-  width: 160%; height: 160%; left: 50%;
-  position: absolute;
-  transform: translateX(-50%);
-  border-radius: 50%;
-}
-
-.subscribe-cta::before {
-  top: -60%;
-  background: rgba(0,0,0,0.1);
-}
-
-.subscribe-cta::after {
-  bottom: -60%;
-  background: rgba(255,255,255,0.08);
-}
-
-.cta-inner {
-  gap: 24px; max-width: 720px; margin: 0 auto; padding: 0 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.cta-copy small {
-  display: block;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  font-size: 13px;
-  opacity: 0.9;
-}
-
-.cta-copy h2 {
-  margin: 8px 0 12px; color: #fff;
-  font-family: var(--font-heading);
-  font-size: 44px;
-  text-transform: uppercase;
-  line-height: 1.2;
-}
-
-.cta-copy p {
-  max-width: 560px; margin: 0 auto; color: rgba(255,255,255,0.9);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.subscribe-form {
-  margin-top: 18px; background: #fff; padding: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 999px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-  position: relative;
-  z-index: 5;
-}
-
-.subscribe-form input[type="email"] {
-  padding: 14px 20px; background: transparent;
-  border: none;
-  outline: none;
-  font-size: 15px;
-  flex: 1;
-  border-radius: 999px;
-}
-
-.subscribe-primary {
-  padding: 14px 26px; background: #111; color: #fff; border: none;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  display: flex;
-  align-items: center;
-}
-
-.subscribe-primary:hover {
-  background: #000;
-}
-
 /* =================================================
    FOOTER
 ================================================= */
 .site-footer {
-  background: #1c1b1a; color: #f2f0ed; margin-top: 60px;
-  border-radius: 18px;
-  text-transform: uppercase;
+  background: #3a3735;  
+  color: #f5f4f2;         
+  margin-top: 60px;
+  border-radius: 4px;     
   font-size: 14px;
-  letter-spacing: 0.5px;
+  letter-spacing: normal; 
 }
 
 .footer-inner {
@@ -427,13 +298,14 @@ body {
 }
 
 .footer-nav a {
-  text-decoration: none; color: #f2f0ed;
-  font-weight: 500;
-  transition: opacity 0.2s ease;
+  text-decoration: underline;
+  color: #f5f4f2;
+  font-weight: 400;
 }
 
 .footer-nav a:hover {
-  opacity: 0.7;
+  color: #dcdad7; /* đổi nhẹ tông, vẫn sáng nhưng kém tương phản */
+  text-decoration: underline;
 }
 
 .footer-socials {
@@ -468,8 +340,7 @@ body {
   display: flex;
   gap: 10px;
   list-style: none;
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
 }
 
 .breadcrumb a {
@@ -484,22 +355,21 @@ body {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  gap: 0; /* dùng separator để tạo khoảng cách */
+  margin: 0; padding: 0; gap: 0;
+  /* dùng separator để tạo khoảng cách */
 }
 
 .breadcrumb__item {
+  color: #9f978f;
   font-size: 18px;
   line-height: 1.4;
-  color: #9f978f; /* xám nhạt cho link */
 }
 
 /* Separator “/” giữa các item */
 .breadcrumb__item + .breadcrumb__item::before {
-  content: " / ";
-  color: #cfc8bf;       /* xám nhạt hơn */
   margin: 0 10px;
+  content: " / ";
+  color: #cfc8bf;
 }
 
 .breadcrumb__link {
@@ -510,21 +380,19 @@ body {
 
 .breadcrumb__current,
 .breadcrumb__item.is-current .breadcrumb__link {
-  color: #1a1a1a;       /* đen */
-  font-weight: 700;     /* bold */
+  color: #1a1a1a;
+  font-weight: 500;
 }
-
 
 /* =================================================
    MODAL (SEARCH)
 ================================================= */
 .modal-overlay {
+  inset: 0; background: rgba(6,6,6,0.45);
   position: fixed;
-  inset: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(6,6,6,0.45);
   z-index: 120;
 }
 
@@ -533,34 +401,26 @@ body {
 }
 
 .modal-panel {
-  background: var(--card);
-  padding: 26px;
-  border-radius: 14px;
-  max-width: 720px;
-  width: 94%;
+  background: var(--card); padding: 26px; width: 94%; max-width: 720px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   position: relative;
 }
 
 .modal-close {
+  right: 12px; top: 12px; padding: 6px; background: transparent; border: 0;
   position: absolute;
-  right: 12px;
-  top: 12px;
-  border: 0;
-  background: transparent;
   font-size: 20px;
-  padding: 6px;
 }
 
 /* =================================================
    MOBILE DRAWER NAV
 ================================================= */
 .mobile-drawer {
+  inset: 0; background: rgba(0,0,0,0.6);
   position: fixed;
-  inset: 0;
   display: none;
   z-index: 130;
-  background: rgba(0,0,0,0.6);
 }
 
 .mobile-drawer.show {
@@ -568,14 +428,9 @@ body {
 }
 
 .mobile-drawer-inner {
-  width: 300px;
-  max-width: 90%;
-  background: #111;
-  color: #fff;
-  height: 100%;
-  padding: 26px 22px;
-  border-top-right-radius: 20px;
-  border-bottom-right-radius: 20px;
+  width: 300px; max-width: 90%; height: 100%; padding: 26px 22px; background: #111; color: #fff;
+  border-top-right-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
 }
@@ -593,8 +448,7 @@ body {
 }
 
 .mobile-brand .logo {
-  height: 32px;
-  width: auto;
+  height: 32px; width: auto;
 }
 
 .mobile-brand .brand-text {
@@ -603,39 +457,32 @@ body {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  color: #fff;
+  background: none; border: none; color: #fff;
   font-size: 22px;
   cursor: pointer;
 }
 
 .mobile-nav ul {
+  margin: 40px 0; padding: 0;
   list-style: none;
-  margin: 40px 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
 .mobile-nav li {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 10px;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .mobile-nav a {
-  color: #fff;
-  text-decoration: none;
+  color: #fff; text-decoration: none;
+  display: block;
   font-size: 16px;
   font-weight: 500;
-  display: block;
   transition: opacity 0.2s ease;
 }
 
-.mobile-nav a:hover {
-  opacity: 0.7;
-}
+.mobile-nav a:hover { opacity: 0.7; }
 
 .mobile-actions {
   display: flex;
@@ -643,26 +490,10 @@ body {
   gap: 12px;
   margin-bottom: 24px;
 }
-
-.search-btn {
-  background: #222;
-  border: none;
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
-  font-size: 18px;
-  color: #fff;
-  cursor: pointer;
-}
-
 .subscribe-btn-mobile {
+  padding: 10px 0; background: #2c2c2c; color: #fff; border: none; border-radius: var(--round);
   flex: 1;
   text-align: center;
-  background: #2c2c2c;
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 0;
   text-decoration: none;
   font-weight: 600;
 }
@@ -675,171 +506,54 @@ body {
 }
 
 .mobile-socials img {
-  width: 24px;
-  height: 24px;
+  width: 24px; height: 24px;
   opacity: 0.9;
   transition: opacity 0.2s ease;
 }
 
-.mobile-socials img:hover {
-  opacity: 1;
-}
+.mobile-socials img:hover { opacity: 1; }
 
 /* =================================================
    HERO BANNER (big background hero)
 ================================================= */
 .hero-banner {
+  background: url('../assets/unleash_background.png') center/cover no-repeat; margin: 20px 0 40px;
+  filter: brightness(0.8) contrast(0.9);
   position: relative;
-  background: url('../assets/unleash_background.png') center/cover no-repeat;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin: 20px 0 40px;
   color: #fff;
 }
 
 .hero-overlay {
-  background: rgba(0,0,0,0.45);
-  padding: 140px 0;
+  padding: 140px 0; background: rgba(0,0,0,0.6);
 }
 
 .hero-content {
+  max-width: 760px; margin: 0 auto;
   text-align: center;
-  max-width: 760px;
-  margin: 0 auto;
 }
 
 .hero-content h1 {
+  margin-bottom: 18px; color: #fff;
   font-family: var(--font-heading);
-  font-size: 52px;
+  font-size: 36px;
   line-height: 1.1;
-  margin-bottom: 18px;
   text-transform: uppercase;
-  color: #fff;
 }
 
 .hero-content p {
+  margin-bottom: 28px; color: rgba(255,255,255,0.85);
   font-size: 18px;
-  color: rgba(255,255,255,0.85);
-  margin-bottom: 28px;
 }
-
-/* NOTE:
-   .btn-primary here is already defined globally above
-   with accent color. If you want hero button to also
-   use accent, just reuse .btn-primary.
-*/
-
-/* =================================================
-   PALETTE SECTION (blue block w/ list)
-================================================= */
-.palette-section {
-  background: #cde6fb;
-  border-radius: var(--radius-lg);
-  padding: 60px 0;
-  margin: 40px 0;
-}
-
-.palette-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 40px;
-}
-
-.palette-left {
-  flex: 1 1 45%;
-  color: #111;
-}
-
-.palette-left .btn-explore {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-weight: 600;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-  cursor: pointer;
-}
-
-.palette-left h2 {
-  font-family: var(--font-heading);
-  font-size: 32px;
-  margin: 0 0 16px;
-  text-transform: uppercase;
-  color: #111;
-}
-
-.palette-left p {
-  color: var(--muted);
-  line-height: 1.6;
-  max-width: 420px;
-  margin-bottom: 24px;
-}
-
-.palette-left .see-more {
-  display: inline-block;
-  padding: 10px 18px;
-  border: 1px solid #111;
-  border-radius: 999px;
-  text-decoration: none;
-  color: #111;
-  font-weight: 600;
-  font-size: 14px;
-  background: transparent;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.palette-left .see-more:hover {
-  background: #111;
-  color: #fff;
-}
-
-.palette-right {
-  flex: 1 1 45%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.palette-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: 360px;
-}
-
-.palette-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 0;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-  font-weight: 600;
-  color: #111;
-  font-size: 15px;
-}
-
-.palette-list li img {
-  width: 26px;
-  height: 26px;
-  opacity: 0.85;
-}
-
 /* =================================================
    ABOUT SECTION (3-column grid with 3 imgs)
 ================================================= */
 .about-section {
-  background: var(--bg);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-  border: 1px solid #e0d8d0;
-  padding: 60px 0;
-  margin: 60px 0;
+  padding: 60px 0; background: var(--bg); margin: 60px 0; 
+  border: 1px solid #d4ccc3;     /* mảnh hơn */
+  border-radius: 4px;            /* ít bo */
+  box-shadow: none;              /* bỏ bóng */
 }
 
 .about-inner {
@@ -856,125 +570,79 @@ body {
 }
 
 .about-badge {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  padding: 6px 16px;
-  border-radius: 999px;
+  padding: 6px 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--round);
   font-size: 12px;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.5px;
   margin-bottom: 14px;
   cursor: default;
 }
 
 .about-title {
+  margin: 0 0 18px; color: #111;
   font-family: var(--font-heading);
-  font-size: 36px;
-  margin: 0 0 18px;
-  text-transform: uppercase;
-  color: #111;
+  font-size: 28px;
 }
 
 .about-desc {
-  color: var(--muted);
+  max-width: 480px; margin-bottom: 28px; color: var(--muted);
   line-height: 1.6;
-  max-width: 480px;
-  margin-bottom: 28px;
 }
 
 .about-btn {
+  padding: 10px 20px; background: transparent; color: #111; border: 1px solid #111; border-radius: var(--round);
   display: inline-block;
-  background: transparent;
-  border: 1px solid #111;
-  border-radius: 999px;
-  padding: 10px 20px;
   text-decoration: none;
-  color: #111;
-  font-weight: 600;
+  font-weight: 500;
   transition: all 0.2s ease;
 }
 
-.about-btn:hover {
-  background: #111;
-  color: #fff;
-}
+.about-btn:hover { background: #333; color: #f8f8f8; transition: none; }
 
-.about-gallery {
-  display: contents;
-}
+.about-gallery { display: contents; }
 
-.img1 {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-}
-
-.img2 {
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
-}
-
-.img3 {
-  grid-column: 3 / 4;
-  grid-row: 1 / 3;
-}
+.img1 { grid-column: 2 / 3; grid-row: 1 / 2; }
+.img2 { grid-column: 1 / 3; grid-row: 2 / 3; }
+.img3 { grid-column: 3 / 4; grid-row: 1 / 3; }
 
 .about-inner img {
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   object-fit: cover;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  transition: transform 0.3s ease;
-}
-
-.about-inner img:hover {
-  transform: scale(1.03);
 }
 
 /* =================================================
    RECIPES SECTION WRAPPER
 ================================================= */
-.recipes-section {
-  margin: 60px 0;
-}
+/* .recipes-section { margin: 0px 0; } */
 
 .recipes-header {
+  max-width: 720px; margin: 0 auto 40px;
   text-align: center;
-  max-width: 720px;
-  margin: 0 auto 40px;
 }
 
 .recipes-badge {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 999px;
+  padding: 6px 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--round);
   font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 500;
   letter-spacing: 0.5px;
-  padding: 6px 16px;
   cursor: default;
   margin-bottom: 12px;
 }
 
 .recipes-title {
+  margin: 8px 0 12px; color: #111;
   font-family: var(--font-heading);
-  font-size: 36px;
-  text-transform: uppercase;
+  font-size: 28px;
   line-height: 1.2;
-  margin: 8px 0 12px;
-  color: #111;
 }
 
 .recipes-desc {
-  color: var(--muted);
+  max-width: 520px; margin: 0 auto 24px; color: var(--muted);
   font-size: 15px;
   line-height: 1.5;
-  max-width: 520px;
-  margin: 0 auto 24px;
 }
 
 .recipe-filters {
@@ -986,21 +654,18 @@ body {
 }
 
 .filter-pill {
-  background: transparent;
-  border: 1px solid #111;
-  border-radius: 999px;
-  color: #111;
+  padding: 10px 16px; background: transparent; color: #111; border: 1px solid #111; border-radius: var(--round);
   font-size: 13px;
-  font-weight: 600;
-  padding: 10px 16px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .filter-pill.active,
-.filter-pill:hover {
-  background: #111;
-  color: #fff;
+.filter-pill:hover { 
+  background: #333;  
+  color: #f8f8f8;
+  transition: none;
 }
 
 /* =================================================
@@ -1019,7 +684,6 @@ body {
   font-family: var(--font-heading);
   font-size: 32px;
   margin: 0 0 12px;
-  text-transform: uppercase;
   color: #111;
 }
 
@@ -1032,9 +696,9 @@ body {
 
 .contact-form {
   background: var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  border: 1px solid #e0d8d0;
+  border: 1px solid #d4ccc3;
+  border-radius: 4px;
+  box-shadow: none;
   padding: 24px;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1061,7 +725,7 @@ body {
 .contact-form input,
 .contact-form textarea {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--round);
   border: 1px solid #ccc;
   font-size: 14px;
 }
@@ -1076,7 +740,7 @@ body {
   background: #111;
   color: #fff;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--round);
   padding: 12px 20px;
   font-weight: 600;
   cursor: pointer;
@@ -1092,9 +756,9 @@ body {
 /* STORES BOX */
 .store-section {
   background: var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  border: 1px solid #e0d8d0;
+  border: 1px solid #d4ccc3;
+  border-radius: 4px;
+  box-shadow: none;
   padding: 24px;
 }
 
@@ -1103,7 +767,6 @@ body {
   font-size: 20px;
   margin: 0 0 12px;
   color: #111;
-  text-transform: uppercase;
 }
 
 .store-section p {
@@ -1162,9 +825,9 @@ body {
 ================================================= */
 .welcome-section {
   background: var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  border: 1px solid #e0d8d0;
+  border: 1px solid #d4ccc3;
+  border-radius: 4px;
+  box-shadow: none;
   margin: 40px auto 60px;
   padding: 60px 40px;
   max-width: 1100px;
@@ -1184,8 +847,7 @@ body {
 
 .welcome-left h1 {
   font-family: var(--font-heading);
-  font-size: 52px;
-  text-transform: uppercase;
+  font-size: 32px;
   line-height: 1.1;
   margin: 0;
   color: #111;
@@ -1208,7 +870,7 @@ body {
   background: var(--accent);
   color: #fff;
   padding: 12px 22px;
-  border-radius: 999px;
+  border-radius: var(--round);
   font-weight: 600;
   text-decoration: none;
   text-transform: uppercase;
@@ -1245,10 +907,10 @@ body {
 
 .aboutus-photo-box {
   width: 100%;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
-  border: 1px solid #e0d8d0;
+  border: 1px solid #d4ccc3;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .aboutus-photo {
@@ -1262,7 +924,7 @@ body {
   margin-top: 12px;
   background: var(--bg);
   border: 1px solid #dcd6cf;
-  border-radius: 999px;
+  border-radius: var(--round);
   padding: 10px 18px;
   width: 100%;
   display: flex;
@@ -1292,8 +954,8 @@ body {
 }
 
 .aboutus-socials a:hover {
-  background: var(--accent);
-  transform: scale(1.1);
+  background: #597ba8; /* dùng cùng tông hover với nút chính */
+  transform: none;     /* bỏ phóng to */
 }
 
 .aboutus-socials img {
@@ -1305,9 +967,9 @@ body {
 
 .aboutus-right {
   background: var(--card);
-  border-radius: var(--radius-lg);
-  border: 1px solid #e0d8d0;
-  box-shadow: var(--shadow);
+  border: 1px solid #d4ccc3;
+  border-radius: 4px;
+  box-shadow: none;
   padding: 32px;
   display: flex;
   flex-direction: column;
@@ -1316,9 +978,8 @@ body {
 
 .aboutus-headline {
   font-family: var(--font-heading);
-  font-size: 30px;
+  font-size: 24px;
   line-height: 1.2;
-  text-transform: uppercase;
   color: #111;
   margin-top: 0;
   margin-bottom: 20px;
@@ -1340,7 +1001,7 @@ body {
 
 .aboutus-signature {
   font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 18px;
   color: #111;
 }
@@ -1370,11 +1031,9 @@ body {
   object-fit: cover;
   display: block;
 }
-
 /* =================================================
    LOGIN / AUTH CARD
 ================================================= */
-
 /* PAGE WRAPPER AROUND CARD */
 .login-wrapper {
   width: 100%;
@@ -1388,9 +1047,9 @@ body {
 /* CARD ITSELF */
 .login-card {
   background: var(--card, #fff);
-  border: 1px solid #e0d8d0;
-  border-radius: var(--radius-lg, 12px);
-  box-shadow: var(--shadow, 0 20px 40px rgba(0,0,0,0.06));
+  border: 1px solid #d4ccc3;
+  border-radius: var(--round);
+  box-shadow: none;
   width: 100%;
   max-width: 700px;
   display: flex;
@@ -1402,7 +1061,7 @@ body {
 .login-head h1 {
   font-size: 32px;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 500;
   color: #000;
   margin: 0 0 8px 0;
   text-transform: uppercase;
@@ -1442,7 +1101,7 @@ body {
   font-size: 15px;
   line-height: 1.4;
   border: 1px solid #cfc8bf;
-  border-radius: 8px;
+  border-radius: var(--round);
   background-color: #fff;
   outline: none;
 }
@@ -1461,7 +1120,7 @@ body {
 .login-card .form-actions .btn-primary {
   background: #111;
   color: #fff;
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   border: 0;
   padding: 10px 16px;
   font-size: 14px;
@@ -1472,7 +1131,9 @@ body {
 }
 
 .login-card .form-actions .btn-primary:hover {
-  background: #000;
+  background: #597ba8;        
+  filter: brightness(0.95);  
+  transition: none;           
 }
 
 /* LOWER AUTH BLOCK (forgot pw / signup / social) */
@@ -1530,22 +1191,14 @@ body {
 }
 
 /* SOCIAL LOGIN ROW */
-.auth-social-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
-  width: 100%;
-}
-
 .social-btn {
   display: inline-block;
   min-width: 150px;
   text-align: center;
   padding: 12px 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
   border: 0;
@@ -1566,7 +1219,7 @@ body {
   justify-content: center;
   gap: 8px;               /* tạo khoảng cách đều giữa icon và text */
   padding: 12px 20px;     /* cân đối lại chiều cao */
-  border-radius: 999px;
+  border-radius: var(--round);
   font-weight: 600;
   text-decoration: none;
   font-size: 15px;
@@ -1584,17 +1237,12 @@ body {
   background: #c1351d;
   transform: translateY(-2px);
 }
-
-.social-facebook {
-  background: #1877F2;
-  color: #fff;
-}
-.btn-view{ display:inline-block; padding:10px 14px; border:1px solid rgba(0,0,0,.15); border-radius:12px; text-decoration:none; color:inherit; }
+.btn-view{ display:inline-block; padding:10px 14px; border:1px solid rgba(0,0,0,.15); border-radius: var(--round); text-decoration:none; color:inherit; }
 .btn-view:hover{ background:rgba(0,0,0,.05); }
 
 .recipes-section input[type="text"] {
   border: 1px solid #cfc8bf;
-  border-radius: 8px;        /* nhẹ hơn, đồng bộ toàn site */
+  border-radius: var(--round);        /* nhẹ hơn, đồng bộ toàn site */
   padding: 10px 14px;
   font-size: 15px;
   width: 100%;
@@ -1610,7 +1258,7 @@ body {
 /* Căn chỉnh Sort by cho bằng dòng chữ */
 .recipes-section select {
   border: 1px solid #cfc8bf;
-  border-radius: 8px;         /* giảm bo góc lại */
+  border-radius: var(--round);         /* giảm bo góc lại */
   font-size: 15px;
   padding: 10px 12px;
   background: #fff;
@@ -1635,77 +1283,10 @@ body {
   padding: 28px 28px 18px;
   border: 1px solid rgba(0,0,0,0.04);
 }
-.recipe-hero .meta-line{
+.recipe-hero{
   display:flex; gap:14px; align-items:center; justify-content:center;
   font-weight:600; letter-spacing:.02em;
 }
-.recipe-hero .meta-dot{opacity:.6}
-.recipe-hero-img{
-  width:100%; height:auto; border-radius: 16px; display:block; margin-top:18px;
-}
-.recipe-layout{
-  display:grid; grid-template-columns: 1.45fr .8fr; gap:22px; margin-top:22px;
-}
-
-.sidebox{
-  background: var(--card);
-  border: 1px solid #e6ded5;
-  border-radius: 14px;
-  padding: 16px 18px;
-  box-shadow: var(--shadow);
-}
-.sidebox h4{
-  margin:4px 0 10px; font-family: var(--font-heading); letter-spacing:.02em;
-}
-.sidebox ul{margin:0; padding-left:18px;}
-.sidebox .map-placeholder{
-  background: #f3ece5; border:1px dashed #d7cfc7; border-radius:12px;
-  height:180px; display:flex; align-items:center; justify-content:center; font-size:14px; color:#7b7570;
-}
-.badge-chip{
-  display:inline-block; padding:6px 10px; border-radius:999px; background:#fde7df; color:#e85b3a; font-weight:700; font-size:12px;
-}
-.author-box{
-  display:flex; gap:12px; align-items:center; border-top:1px solid #e6ded5; padding-top:16px; margin-top:16px;
-}
-.author-box img{width:44px;height:44px;border-radius:999px;object-fit:cover}
-.similar-head{margin:26px 0 10px}
-
-/* Search suggest dropdown inside modal */
-.suggest-list{
-  list-style:none;
-  margin:10px 0 0;
-  padding:0;
-  border:1px solid #e0d8d0;
-  border-radius:12px;
-  background:var(--card,#fff);
-  box-shadow:var(--shadow,0 6px 18px rgba(14,14,14,0.06));
-  max-height:360px;
-  overflow:auto;
-}
-
-.suggest-list li + li{ border-top:1px solid #efe9e3; }
-
-.suggest-list a{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  text-decoration:none;
-  color:inherit;
-  padding:10px 12px;
-}
-
-.suggest-list img{
-  width:44px; height:44px; object-fit:cover; border-radius:10px;
-  flex:0 0 auto;
-}
-
-.suggest-list .txt{ display:flex; flex-direction:column; }
-.suggest-list .title{ font-weight:600; color:#111; line-height:1.2; }
-.suggest-list .meta{ font-size:12px; color:var(--muted,#777); margin-top:2px; }
-.suggest-list .muted{ color:var(--muted,#777); padding:10px 12px; }
-.suggest-list a:hover{ background:#faf7f3; }
-
 /* User dropdown spacing & hover */
 .user-dropdown-menu {
   display: flex;
@@ -1713,19 +1294,18 @@ body {
   gap: 8px;               /* tạo khoảng cách giữa các item */
   padding: 8px;
   background: #fff;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgba(0,0,0,.12);
 }
 
 .user-dropdown-menu a {
   display: block;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   text-decoration: none;
   color: #222;
   margin: 2px;
 }
-
 .user-dropdown-menu a:hover {
   background: #f3f3f3;
 }
@@ -1760,3 +1340,4 @@ body {
   -webkit-overflow-scrolling: touch;
   padding: 20px;
 }
+

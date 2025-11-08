@@ -7,9 +7,6 @@
   .cards-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .hero h1 {
-    font-size: 40px;
-  }
   .header-inner {
     gap: 8px;
   }
@@ -64,10 +61,6 @@
   .cards-grid {
     grid-template-columns: 1fr;
   }
-  .hero .hero-panel {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   .footer-inner {
     flex-direction: column;
     gap: 14px;
@@ -108,9 +101,6 @@
 @media (max-width: 420px) {
   .logo {
     height: 36px;
-  }
-  .hero h1 {
-    font-size: 28px;
   }
   .subscribe-form input {
     width: 100%;

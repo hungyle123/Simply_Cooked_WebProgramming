@@ -12,8 +12,7 @@ if (empty($_SESSION['user_id'])) {
 $cats = [];
 $res = $conn->query("SELECT category_id, name FROM categories ORDER BY name ASC");
 while($row = $res->fetch_assoc()){ $cats[] = $row; }
-?>
-<?php
+
 $active = '';
 $page_title = "Add New Recipe - Cooks Delight";
 include __DIR__ . '/../app/views/header.php';
@@ -46,9 +45,16 @@ include __DIR__ . '/../app/views/header.php';
         </select>
       </label>
 
-      <label>Prep time <input name="prep_time" type="text" placeholder="10 min" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></label>
-      <label>Cook time <input name="cook_time" type="text" placeholder="20 min" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></label>
-      <label>Total time <input name="total_time" type="text" placeholder="30 min" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></label>
+      <!-- *_minutes theo schema mới -->
+      <label>Prep minutes
+        <input name="prep_minutes" type="number" min="0" step="1" placeholder="10" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
+      </label>
+      <label>Cook minutes
+        <input name="cook_minutes" type="number" min="0" step="1" placeholder="20" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
+      </label>
+      <label>Total minutes
+        <input name="total_minutes" type="number" min="0" step="1" placeholder="30" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
+      </label>
       <label>Is featured?
         <select name="is_featured" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
           <option value="0">No</option>
@@ -68,43 +74,28 @@ include __DIR__ . '/../app/views/header.php';
       <textarea name="description" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
     </label>
 
-    <!-- Instructions blocks -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+    <!-- Instructions intro (giữ trong recipes) -->
+    <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:12px">
       <label>Instructions Intro
         <textarea name="instructions_intro" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
       </label>
-      <label>Full Instructions
-        <textarea name="instructions" rows="3" required style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
-      </label>
+    </div>
 
-      <label>Prep Instructions
-        <textarea name="prep_instructions" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
-      </label>
-      <label>Cook Instructions
-        <textarea name="cook_instructions" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
-      </label>
+    <label style="display:block;margin-top:12px">Video URL
+      <input type="text" name="video_url" placeholder="https://youtube..." style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
+    </label>
 
-      <label>Do Tips
-        <textarea name="do_tips" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
-        <small style="color:var(--muted);display:block;margin-top:6px">Support bullet by newline \n</small>
+    <!-- Origin / map -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <label>Origin Place
+        <input name="origin_place" type="text" placeholder="Tuscany, Italy" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
       </label>
-      <label>Don't Tips
-        <textarea name="dont_tips" rows="3" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
-        <small style="color:var(--muted);display:block;margin-top:6px">Support bullet by newline \n</small>
+      <label>Origin Zoom
+        <input name="origin_zoom" type="number" min="1" max="20" value="11" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
       </label>
-
-      <label>Video URL
-        <input type="text" name="video_url" placeholder="https://youtube..." style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
+      <label style="grid-column:1 / -1">Map Embed URL
+        <input name="origin_map_embed_url" type="text" placeholder="https://www.google.com/maps/d/embed?mid=..." style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
       </label>
-
-      <!-- Origin / map -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <label>Origin Place <input name="origin_place" type="text" placeholder="Tuscany, Italy" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></label>
-        <label>Origin Zoom <input name="origin_zoom" type="number" min="1" max="20" value="11" style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></label>
-        <label style="grid-column:1 / -1">Map Embed URL
-          <input name="origin_map_embed_url" type="text" placeholder="https://www.google.com/maps/d/embed?mid=..." style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
-        </label>
-      </div>
     </div>
 
     <!-- Categories -->
@@ -124,7 +115,7 @@ include __DIR__ . '/../app/views/header.php';
       <h3 style="margin:0 0 8px">Ingredients</h3>
       <div id="ingredients"></div>
       <button type="button" class="btn" onclick="addRow('ingredients','ing')">+ Add ingredient</button>
-      <small style="color:var(--muted);display:block;margin-top:6px">Field: name, quantity, unit, note.</small>
+      <small style="color:var(--muted);display:block;margin-top:6px">Fields: name, quantity, unit, note.</small>
     </section>
 
     <!-- EQUIPMENT -->
@@ -139,7 +130,36 @@ include __DIR__ . '/../app/views/header.php';
       <h3 style="margin:0 0 8px">Instruction Sections</h3>
       <div id="sections"></div>
       <button type="button" class="btn" onclick="addSection()">+ Add section</button>
-      <small style="color:var(--muted);display:block;margin-top:6px">Each section have title + body (body support bullet by newline \n).</small>
+      <small style="color:var(--muted);display:block;margin-top:6px">Each section has a title + body (each line = one step).</small>
+    </section>
+
+    <!-- RECIPE NOTES: prep / cook / do / dont -->
+    <section style="margin-top:24px">
+      <h3 style="margin:0 0 10px">Notes</h3>
+
+      <div class="note-group" style="border:1px solid #e2dfdb;border-radius:12px;padding:12px;margin-bottom:12px">
+        <h4 style="margin:0 0 8px">Prep Notes</h4>
+        <div id="notes-prep"></div>
+        <button type="button" class="btn" onclick="addNote('prep')">+ Add prep note</button>
+      </div>
+
+      <div class="note-group" style="border:1px solid #e2dfdb;border-radius:12px;padding:12px;margin-bottom:12px">
+        <h4 style="margin:0 0 8px">Cook Notes</h4>
+        <div id="notes-cook"></div>
+        <button type="button" class="btn" onclick="addNote('cook')">+ Add cook note</button>
+      </div>
+
+      <div class="note-group" style="border:1px solid #e2dfdb;border-radius:12px;padding:12px;margin-bottom:12px">
+        <h4 style="margin:0 0 8px">DO Tips</h4>
+        <div id="notes-do"></div>
+        <button type="button" class="btn" onclick="addNote('do')">+ Add DO tip</button>
+      </div>
+
+      <div class="note-group" style="border:1px solid #e2dfdb;border-radius:12px;padding:12px;margin-bottom:12px">
+        <h4 style="margin:0 0 8px">DON’T Tips</h4>
+        <div id="notes-dont"></div>
+        <button type="button" class="btn" onclick="addNote('dont')">+ Add DON’T tip</button>
+      </div>
     </section>
 
     <div style="margin-top:22px;display:flex;gap:12px">
@@ -159,7 +179,7 @@ function slugify(s){return s.toLowerCase().trim()
 titleEl.addEventListener('input',()=>{ if(!slugEl.dataset.touched) slugEl.value = slugify(titleEl.value);});
 slugEl.addEventListener('input',()=>{ slugEl.dataset.touched = '1';});
 
-// repeater helpers
+// ===== repeater helpers (ingredients/equipment) =====
 function addRow(containerId, prefix, nameOnly){
   const wrap = document.getElementById(containerId);
   const idx = wrap.children.length;
@@ -182,6 +202,8 @@ function addRow(containerId, prefix, nameOnly){
   }
   wrap.appendChild(row);
 }
+
+// ===== instruction sections =====
 function addSection(){
   const wrap = document.getElementById('sections');
   const idx = wrap.children.length;
@@ -191,7 +213,7 @@ function addSection(){
     <label>Section title
       <input name="sec[${idx}][section_title]" required style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px">
     </label>
-    <label>Section body (each line = bullet)
+    <label>Section body (each line = bullet/step)
       <textarea name="sec[${idx}][section_body]" rows="3" required style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
     </label>
     <input type="hidden" name="sec[${idx}][sort_order]" value="${idx+1}">
@@ -200,10 +222,28 @@ function addSection(){
   wrap.appendChild(box);
 }
 
-// seed 1 hàng mặc định
+// ===== recipe notes repeater (prep/cook/do/dont) =====
+function addNote(type){ // type in {'prep','cook','do','dont'}
+  const wrap = document.getElementById('notes-' + type);
+  const idx = wrap.children.length;
+  const row = document.createElement('div');
+  row.style = "display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px";
+  row.innerHTML = `
+    <textarea name="notes[${type}][${idx}][note_text]" rows="2" placeholder="${type} note..." required style="width:100%;padding:10px;border:1px solid #e2dfdb;border-radius:10px"></textarea>
+    <input type="hidden" name="notes[${type}][${idx}][sort_order]" value="${idx+1}">
+    <button type="button" class="btn-small" onclick="this.parentElement.remove()">Remove</button>
+  `;
+  wrap.appendChild(row);
+}
+
+// seed mặc định
 addRow('ingredients','ing');
 addRow('equipment','eq','name');
 addSection();
+addNote('prep');
+addNote('cook');
+addNote('do');
+addNote('dont');
 </script>
 
 <?php include __DIR__ . '/../app/views/footer.php'; ?>

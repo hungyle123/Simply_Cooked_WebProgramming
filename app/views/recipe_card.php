@@ -1,6 +1,18 @@
 <?php
 // vẫn giữ đoạn bảo vệ biến nếu bạn đang truyền $r
 if (!isset($recipe) && isset($r)) { $recipe = $r; }
+
+if (!function_exists('fmt_minutes_card')) {
+  function fmt_minutes_card($m) {
+    if ($m === null || $m === '' ) return null;
+    $m = (int)$m;
+    if ($m < 60) return $m . ' mins';
+    $h = intdiv($m, 60);
+    $r = $m % 60;
+    return $r ? "{$h}h {$r}m" : "{$h}h";
+  }
+}
+
 $slug   = htmlspecialchars($recipe['slug']);
 $title  = htmlspecialchars($recipe['title']);
 $img    = htmlspecialchars($recipe['main_image_url'] ?? '');
@@ -23,9 +35,15 @@ $desc   = htmlspecialchars($recipe['meta_description'] ?? '');
     <p class="recipe-card-desc"><?php echo $desc; ?></p>
 
     <div class="recipe-card-meta">
-      <?php if (!empty($recipe['total_time'])): ?><span><?php echo htmlspecialchars($recipe['total_time']); ?></span><?php endif; ?>
-      <?php if (!empty($recipe['prep_time'])): ?><span><?php echo htmlspecialchars($recipe['prep_time']); ?> PREP</span><?php endif; ?>
-      <?php if (!empty($recipe['servings'])): ?><span><?php echo htmlspecialchars($recipe['servings']); ?></span><?php endif; ?>
+      <?php if (!empty($recipe['total_minutes'])): ?>
+        <span><?php echo htmlspecialchars(fmt_minutes_card($recipe['total_minutes'])); ?></span>
+      <?php endif; ?>
+      <?php if (!empty($recipe['prep_minutes'])): ?>
+        <span><?php echo htmlspecialchars(fmt_minutes_card($recipe['prep_minutes'])); ?> PREP</span>
+      <?php endif; ?>
+      <?php if (!empty($recipe['cook_minutes'])): ?>
+        <span><?php echo htmlspecialchars(fmt_minutes_card($recipe['cook_minutes'])); ?> COOK</span>
+      <?php endif; ?>
     </div>
 
     <a class="btn-view" href="recipe.php?slug=<?php echo $slug; ?>">VIEW RECIPE</a>

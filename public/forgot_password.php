@@ -1,6 +1,8 @@
 <?php
 // forgot_password.php
-// STEP 1: user nhập email để lấy link reset
+// STEP 1: user nhập email để lấy link reset (demo: không gửi email, chỉ hiển thị link)
+// Sửa: Không dùng bảng password_resets (vì schema mới không có).
+//      Token được lưu tạm trong $_SESSION với hạn 60 phút.
 
 require_once __DIR__ . '/../config/db.php';
 
@@ -17,32 +19,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email === '') {
         $error = 'Please enter your email.';
     } else {
-        // 1. tìm user theo email
+        // 1) Tìm user theo email
         $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->bind_result($uid);
 
         if ($stmt->fetch()) {
-            // Có user
             $stmt->close();
 
-            // 2. tạo token reset ngẫu nhiên
-            $token = bin2hex(random_bytes(32)); // 64 ký tự hex
+            // 2) Tạo token reset ngẫu nhiên
+            $token = bin2hex(random_bytes(32)); // 64 hex chars
 
-            // 3. lưu token vào password_resets
-            $stmt2 = $conn->prepare("INSERT INTO password_resets (user_id, token) VALUES (?, ?)");
-            $stmt2->bind_param("is", $uid, $token);
-            $stmt2->execute();
-            $stmt2->close();
+            // 3) Lưu token tạm thời trong session (thay vì lưu DB)
+            //    Hạn dùng: 60 phút
+            $expiresAt = time() + 60 * 60;
+            if (!isset($_SESSION['password_reset'])) {
+                $_SESSION['password_reset'] = [];
+            }
+            $_SESSION['password_reset'][$token] = [
+                'user_id' => $uid,
+                'expires' => $expiresAt,
+            ];
 
-            // 4. tạo link reset.
-            // Trong bài lab không cần gửi email thật, chỉ cần show link để giảng viên nhìn thấy là đủ.
+            // 4) Tạo link reset (demo: chỉ hiển thị cho GV)
             $reset_link = "reset_password.php?token=" . urlencode($token);
-
             $message = "A reset link has been generated. Please use this link to set a new password: " . $reset_link;
         } else {
-            // Không tìm thấy email
             $error = 'No account found with that email.';
             $stmt->close();
         }

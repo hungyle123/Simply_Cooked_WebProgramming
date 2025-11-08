@@ -2,11 +2,20 @@
 function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
     $recipes = [];
 
-    // Nếu có category, JOIN thêm bảng categories
     if ($categorySlug) {
+        // Lọc theo category slug (many-to-many)
         $sql = "
-            SELECT r.recipe_id, r.title, r.main_image_url, r.prep_time, r.cook_time, r.total_time,
-                   r.views, r.is_featured, r.meta_description
+            SELECT 
+                r.recipe_id,
+                r.title,
+                r.main_image_url,
+                r.prep_minutes,
+                r.cook_minutes,
+                r.total_minutes,
+                r.views,
+                r.is_featured,
+                r.difficulty,
+                r.meta_description
             FROM recipes r
             JOIN recipe_categories rc ON r.recipe_id = rc.recipe_id
             JOIN categories c ON rc.category_id = c.category_id
@@ -19,8 +28,17 @@ function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
     } else {
         // Không có category → lấy tất cả
         $sql = "
-            SELECT recipe_id, title, main_image_url, prep_time, cook_time, total_time,
-                   views, is_featured, meta_description
+            SELECT 
+                recipe_id,
+                title,
+                main_image_url,
+                prep_minutes,
+                cook_minutes,
+                total_minutes,
+                views,
+                is_featured,
+                difficulty,
+                meta_description
             FROM recipes
             ORDER BY created_at DESC
             LIMIT ?
@@ -34,6 +52,7 @@ function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
         $result = $stmt->get_result();
 
         while ($row = $result->fetch_assoc()) {
+            // Ảnh mặc định + chuẩn hoá đường dẫn nếu bắt đầu bằng /images/
             if (empty($row['main_image_url'])) {
                 $row['main_image_url'] = "assets/CTABG.png";
             } else {
@@ -42,16 +61,29 @@ function get_recipes_for_home(mysqli $conn, $limit = 12, $categorySlug = null) {
                 }
             }
 
+            // Excerpt fallback
             $row['excerpt'] = !empty($row['meta_description'])
                 ? $row['meta_description']
                 : ("Discover " . $row['title']);
 
-            $timeDisplay = $row['total_time'] ?: ($row['cook_time'] ?: $row['prep_time']);
-            $row['time_display'] = $timeDisplay ?: '—';
-            $row['difficulty'] = "EASY PREP";
-            $row['servings_display'] = !empty($row['servings'])
-                ? preg_replace('/[^0-9]/', '', $row['servings']) . ' SERVES'
-                : '— SERVES';
+            // Hiển thị thời gian theo phút (ưu tiên total -> cook -> prep)
+            $minutes = null;
+            if (!empty($row['total_minutes'])) {
+                $minutes = (int)$row['total_minutes'];
+            } elseif (!empty($row['cook_minutes'])) {
+                $minutes = (int)$row['cook_minutes'];
+            } elseif (!empty($row['prep_minutes'])) {
+                $minutes = (int)$row['prep_minutes'];
+            }
+            $row['time_display'] = ($minutes !== null && $minutes > 0) ? ($minutes . ' min') : '—';
+
+            // Difficulty: lấy từ DB, fallback mặc định
+            $row['difficulty'] = !empty($row['difficulty']) ? $row['difficulty'] : 'EASY PREP';
+
+            // Schema mới không còn cột servings
+            $row['servings_display'] = '— SERVES';
+
+            // Alias id giữ tương thích UI
             $row['id'] = $row['recipe_id'];
 
             $recipes[] = $row;

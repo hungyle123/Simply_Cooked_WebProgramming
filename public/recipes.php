@@ -40,11 +40,17 @@ if ($q !== '') {
 $whereSql = $where ? ('WHERE '.implode(' AND ', $where)) : '';
 
 switch ($sort) {
-  case 'oldest': $orderSql = "ORDER BY r.created_at ASC"; break;
-  case 'title':  $orderSql = "ORDER BY r.title ASC"; break;
-  case 'time':   // ưu tiên total_time rồi đến prep_time nếu thiếu
-                 $orderSql = "ORDER BY COALESCE(NULLIF(r.total_time,''), NULLIF(r.prep_time,'')) ASC, r.title ASC"; break;
-  default:       $orderSql = "ORDER BY r.created_at DESC"; // newest
+  case 'oldest':
+    $orderSql = "ORDER BY r.created_at ASC";
+    break;
+  case 'title':
+    $orderSql = "ORDER BY r.title ASC";
+    break;
+  case 'time':   // ưu tiên total_minutes rồi đến prep_minutes nếu thiếu
+    $orderSql = "ORDER BY COALESCE(r.total_minutes, r.prep_minutes) ASC, r.title ASC";
+    break;
+  default:
+    $orderSql = "ORDER BY r.created_at DESC"; // newest
 }
 
 $offset = ($page - 1) * $perPage;
@@ -61,7 +67,9 @@ $totalPages = max(1, (int)ceil($total / $perPage));
 
 /** --- Fetch page --- */
 $sql = "SELECT r.recipe_id, r.title, r.slug, r.meta_description, r.keywords,
-               r.main_image_url, r.prep_time, r.cook_time, r.total_time, r.is_featured
+               r.main_image_url,
+               r.prep_minutes, r.cook_minutes, r.total_minutes,
+               r.is_featured
         FROM recipes r
         $whereSql
         $orderSql
@@ -79,17 +87,24 @@ $res = $stmt->get_result();
 $rows = $res->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-/** --- Helper giữ tham số URL --- */
+/** --- Helpers --- */
 function keep_params(array $extra = []) {
   $params = $_GET;
   foreach ($extra as $k=>$v) $params[$k]=$v;
   return '?' . http_build_query($params);
 }
+function fmt_minutes($m){
+  if ($m === null || $m === '') return null;
+  $m = (int)$m;
+  if ($m < 60) return $m . ' mins';
+  $h = intdiv($m, 60);
+  $r = $m % 60;
+  return $r ? "{$h}h {$r}m" : "{$h}h";
+}
 ?>
 
 <?php
 // ==== SEO for recipes listing ====
-// (đảm bảo $cat, $q đã có ở các dòng trên)
 $humanCat = [
   'all' => 'All',
   'breakfast' => 'Breakfast',
@@ -97,10 +112,7 @@ $humanCat = [
   'dinner' => 'Dinner'
 ][$cat] ?? ucfirst($cat);
 
-// (tuỳ chọn) title cho body
 $page_title = 'Recipes — Cooks Delight';
-
-// highlight tab trong header
 $active = 'recipes';
 
 if ($cat !== 'all' && $q !== '') {
@@ -118,7 +130,6 @@ if ($cat !== 'all' && $q !== '') {
 }
 
 // ===== Canonical for listing =====
-// Giữ tham số "cat" (nếu khác 'all') và "page" (nếu >1) — BỎ q/sort khỏi canonical
 $canon_params = [];
 if (isset($cat) && $cat !== 'all') {
   $canon_params['cat'] = $cat;
@@ -126,7 +137,6 @@ if (isset($cat) && $cat !== 'all') {
 if (isset($page) && (int)$page > 1) {
   $canon_params['page'] = (int)$page;
 }
-
 $canonical_url = BASE_URL . 'recipes.php' . ($canon_params ? ('?' . http_build_query($canon_params)) : '');
 
 // === Include header sau khi đã có biến SEO ===
@@ -134,11 +144,9 @@ include __DIR__ . '/../app/views/header.php';
 ?>
 
 
-
 <main class="site-main">
   <!-- Breadcrumb -->
   <?php
-    // Breadcrumb động theo category (?cat)
     $breadcrumbs = [
       ['label' => 'Home',    'url' => BASE_URL . 'index.php'],
       ['label' => 'Recipes', 'url' => ($cat !== 'all' ? BASE_URL . 'recipes.php' : null)],
@@ -147,7 +155,6 @@ include __DIR__ . '/../app/views/header.php';
     if ($cat !== 'all') {
       $catLabels = ['breakfast' => 'Breakfast', 'lunch' => 'Lunch', 'dinner' => 'Dinner'];
       $catLabel  = $catLabels[$cat] ?? ucfirst($cat);
-      // về đúng danh sách cat, đồng thời reset q/sort/page
       $breadcrumbs[] = [
         'label' => $catLabel,
         'url'   => BASE_URL . 'recipes.php?cat=' . urlencode($cat) . '&q=&sort=newest&page=1',
@@ -189,7 +196,7 @@ include __DIR__ . '/../app/views/header.php';
           <input id="q" name="q" type="text" placeholder="Search by title or keyword…"
                 value="<?= htmlspecialchars($q) ?>">
 
-          <!-- THÊM MỚI: dropdown gợi ý nhỏ gọn (bám theo input) -->
+          <!-- dropdown gợi ý nhỏ gọn (bám theo input) -->
           <ul id="recipesSuggestList" class="suggest-compact" style="display:none;"></ul>
         </div>
         <div class="form-group">
@@ -213,7 +220,7 @@ include __DIR__ . '/../app/views/header.php';
         <p class="muted">No recipes found. Try a different filter or keyword.</p>
       <?php else: foreach ($rows as $r): ?>
         <article class="recipe-card">
-          <a class="recipe-link" href="recipe.php?id=<?= (int)$r['recipe_id'] ?>">
+          <a class="recipe-link" href="recipe.php?slug=<?= urlencode($r['slug']) ?>">
             <div class="recipe-card-media">
               <?php if (!empty($r['is_featured'])): ?>
                 <span class="badge-pill badge-orange">Featured</span>
@@ -228,14 +235,14 @@ include __DIR__ . '/../app/views/header.php';
                 <p class="recipe-excerpt"><?= htmlspecialchars($r['meta_description']) ?></p>
               <?php endif; ?>
               <div class="recipe-meta">
-                <?php if (!empty($r['prep_time'])): ?>
-                  <span class="meta-item">Prep: <?= htmlspecialchars($r['prep_time']) ?></span>
+                <?php if (($t = fmt_minutes($r['prep_minutes'] ?? null))): ?>
+                  <span class="meta-item">Prep: <?= htmlspecialchars($t) ?></span>
                 <?php endif; ?>
-                <?php if (!empty($r['cook_time'])): ?>
-                  <span class="meta-item">Cook: <?= htmlspecialchars($r['cook_time']) ?></span>
+                <?php if (($t = fmt_minutes($r['cook_minutes'] ?? null))): ?>
+                  <span class="meta-item">Cook: <?= htmlspecialchars($t) ?></span>
                 <?php endif; ?>
-                <?php if (!empty($r['total_time'])): ?>
-                  <span class="meta-item">Total: <?= htmlspecialchars($r['total_time']) ?></span>
+                <?php if (($t = fmt_minutes($r['total_minutes'] ?? null))): ?>
+                  <span class="meta-item">Total: <?= htmlspecialchars($t) ?></span>
                 <?php endif; ?>
               </div>
               <div class="recipe-cta">
@@ -275,7 +282,7 @@ include __DIR__ . '/../app/views/header.php';
     if (sortSel && sortSel.form) {
       sortSel.addEventListener('change', function () {
         var pg = sortSel.form.querySelector('input[name="page"]');
-        if (pg) pg.value = 1;        // luôn quay lại trang 1 khi đổi sort
+        if (pg) pg.value = 1;
         if (sortSel.form.requestSubmit) sortSel.form.requestSubmit();
         else sortSel.form.submit();
       });
@@ -285,12 +292,11 @@ include __DIR__ . '/../app/views/header.php';
 
 <script>
 (function attachRecipesAjaxSearch(){
-  const input = document.getElementById('q');                // ô search sẵn có
+  const input = document.getElementById('q');
   const list  = document.getElementById('recipesSuggestList');
   const form  = document.getElementById('recipesSearchForm');
   if (!input || !list || !form) return;
 
-  // KHÔNG chặn submit: Enter vẫn submit GET như cũ
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
   async function run(){
@@ -312,9 +318,11 @@ include __DIR__ . '/../app/views/header.php';
       list.innerHTML = data.map(function(it){
         const href = it.slug ? ('recipe.php?slug=' + encodeURIComponent(it.slug))
                              : ('recipe.php?id=' + encodeURIComponent(it.recipe_id || ''));
-        const meta = [it.prep_time ? ('Prep ' + it.prep_time) : null,
-                      it.cook_time ? ('Cook ' + it.cook_time) : null]
-                      .filter(Boolean).join(' • ');
+        // đổi sang *_minutes cho đúng với search_controller mới
+        const meta = [
+          (it.prep_minutes != null ? ('Prep ' + formatMinutes(it.prep_minutes)) : null),
+          (it.cook_minutes != null ? ('Cook ' + formatMinutes(it.cook_minutes)) : null)
+        ].filter(Boolean).join(' • ');
         return `<li><a href="${href}" tabindex="0">
                   <span class="t">${(it.title||'Untitled')}</span>
                   ${meta ? `<span class="m">${meta}</span>` : ''}
@@ -328,16 +336,22 @@ include __DIR__ . '/../app/views/header.php';
     }
   }
 
+  function formatMinutes(m){
+    m = parseInt(m,10);
+    if (isNaN(m)) return '';
+    if (m < 60) return m + ' mins';
+    const h = Math.floor(m/60), r = m%60;
+    return r ? (`${h}h ${r}m`) : (`${h}h`);
+  }
+
   const runDebounced = debounce(run, 200);
   input.addEventListener('input', runDebounced);
   input.addEventListener('focus', runDebounced);
 
-  // Ẩn dropdown khi click ra ngoài
   document.addEventListener('click', function(e){
     if (!list.contains(e.target) && e.target !== input){ list.style.display='none'; }
   });
 
-  // Điều hướng bằng phím ↑ ↓ ngay trong list (không ảnh hưởng Enter submit form)
   input.addEventListener('keydown', function(e){
     const items = Array.from(list.querySelectorAll('li a'));
     if (!items.length) return;

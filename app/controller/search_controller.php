@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Search recipes by keyword and return JSON list
- * Output format: [{recipe_id, slug, title, thumb, prep_time, cook_time}]
+ * Output format: [{recipe_id, slug, title, thumb, prep_minutes, cook_minutes}]
  */
 function search_recipes_json(mysqli $conn): void {
     header('Content-Type: application/json; charset=utf-8');
@@ -15,14 +15,14 @@ function search_recipes_json(mysqli $conn): void {
 
     if ($q === '') { echo json_encode([]); return; }
 
-    // NOTE: các cột khớp với recipes.php đang dùng: main_image_url, title, slug, prep_time, cook_time
+    // KHỚP SCHEMA MỚI: dùng prep_minutes, cook_minutes
     $sql = "
       SELECT r.recipe_id,
              r.slug,
              r.title,
              COALESCE(NULLIF(r.main_image_url,''), '/public/assets/placeholder.jpg') AS thumb,
-             r.prep_time,
-             r.cook_time
+             r.prep_minutes,
+             r.cook_minutes
       FROM recipes r
       WHERE r.title LIKE CONCAT('%', ?, '%')
          OR r.keywords LIKE CONCAT('%', ?, '%')
@@ -43,12 +43,12 @@ function search_recipes_json(mysqli $conn): void {
     $out = [];
     while ($row = $res->fetch_assoc()) {
         $out[] = [
-            'recipe_id' => (int)$row['recipe_id'],
-            'slug'      => (string)$row['slug'],
-            'title'     => (string)$row['title'],
-            'thumb'     => (string)$row['thumb'],
-            'prep_time' => $row['prep_time'] !== null ? (string)$row['prep_time'] : null,
-            'cook_time' => $row['cook_time'] !== null ? (string)$row['cook_time'] : null,
+            'recipe_id'    => (int)$row['recipe_id'],
+            'slug'         => (string)$row['slug'],
+            'title'        => (string)$row['title'],
+            'thumb'        => (string)$row['thumb'],
+            'prep_minutes' => $row['prep_minutes'] !== null ? (int)$row['prep_minutes'] : null,
+            'cook_minutes' => $row['cook_minutes'] !== null ? (int)$row['cook_minutes'] : null,
         ];
     }
     $stmt->close();

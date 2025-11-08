@@ -3,7 +3,7 @@
 session_start();
 require_once __DIR__ . '/../../config/db.php';
 
-// Để mysqli ném Exception (dễ try/catch hơn)
+// Để mysqli ném Exception
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 /** CSRF & Auth */
@@ -11,19 +11,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit('Meth
 if (empty($_SESSION['user_id'])) { header('Location: /Individual_website/project/public/login.php'); exit; }
 if (empty($_POST['csrf']) || $_POST['csrf'] !== ($_SESSION['csrf'] ?? '')) { http_response_code(400); exit('Bad CSRF'); }
 
-/** Helper: chuẩn hoá bullet (mỗi dòng -> "• ...") */
-function normalize_bullets(?string $text): ?string {
-  if ($text === null) return null;
+/** Helper: tách dòng & làm sạch bullet/đánh số ở đầu */
+function split_lines(?string $text): array {
+  if ($text === null) return [];
   $lines = preg_split('/\R/u', $text);
   $out = [];
   foreach ($lines as $ln) {
     $ln = trim($ln);
     if ($ln === '') continue;
-    // gỡ bullet/số có sẵn ở đầu để tránh double
+    // gỡ bullet/số đầu dòng
     $ln = preg_replace('/^\s*(?:[\x{2022}\x{00B7}\x{2023}\x{25CF}\-\*\x{2013}\x{2014}]|\d+[.)])\s*/u', '', $ln);
-    $out[] = '• ' . $ln;
+    $out[] = $ln;
   }
-  return $out ? implode("\n", $out) : null;
+  return $out;
 }
 
 /** Input chính */
@@ -37,26 +37,27 @@ $description        = $_POST['description']         ?? null;
 $meta_description   = $_POST['meta_description']    ?? null;
 $keywords           = $_POST['keywords']            ?? null;
 $main_image_url     = $_POST['main_image_url']      ?? null;
-$prep_time          = $_POST['prep_time']           ?? null;
-$cook_time          = $_POST['cook_time']           ?? null;
-$total_time         = $_POST['total_time']          ?? null;
+
+// ĐÚNG schema mới: *_minutes
+$prep_minutes  = ($_POST['prep_minutes']  ?? '') !== '' ? (int)$_POST['prep_minutes']  : null;
+$cook_minutes  = ($_POST['cook_minutes']  ?? '') !== '' ? (int)$_POST['cook_minutes']  : null;
+$total_minutes = ($_POST['total_minutes'] ?? '') !== '' ? (int)$_POST['total_minutes'] : null;
+
 $difficulty         = $_POST['difficulty']          ?? 'easy';
 $is_featured        = isset($_POST['is_featured']) ? (int)$_POST['is_featured'] : 0;
 $instructions_intro = $_POST['instructions_intro']  ?? null;
-$instructions       = $_POST['instructions']        ?? '';
-$prep_instructions  = $_POST['prep_instructions']   ?? null;
-$cook_instructions  = $_POST['cook_instructions']   ?? null;
-$do_tips            = normalize_bullets($_POST['do_tips']   ?? null);
-$dont_tips          = normalize_bullets($_POST['dont_tips'] ?? null);
+
 $video_url          = $_POST['video_url']           ?? null;
 $origin_place       = $_POST['origin_place']        ?? null;
 $origin_zoom        = (isset($_POST['origin_zoom']) && $_POST['origin_zoom'] !== '') ? (int)$_POST['origin_zoom'] : null;
 $origin_map_embed_url = $_POST['origin_map_embed_url'] ?? null;
 
+// Mảng form
 $category_ids = array_map('intval', $_POST['category_ids'] ?? []);
 $ingredients  = $_POST['ing'] ?? [];
 $equipment    = $_POST['eq']  ?? [];
 $sections     = $_POST['sec'] ?? [];
+$notes        = $_POST['notes'] ?? []; // notes[prep|cook|do|dont][i][note_text]
 
 $conn->begin_transaction();
 
@@ -64,21 +65,19 @@ try {
   // ---------- Insert recipes ----------
   $sql = "INSERT INTO recipes
     (user_id, title, slug, description, meta_description, keywords,
-     main_image_url, prep_time, cook_time, total_time,
+     main_image_url, prep_minutes, cook_minutes, total_minutes,
      difficulty, is_featured,
-     instructions_intro, instructions, prep_instructions, cook_instructions,
-     do_tips, dont_tips, video_url, origin_place, origin_zoom, origin_map_embed_url)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+     instructions_intro, video_url, origin_place, origin_zoom, origin_map_embed_url)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
   $stmt = $conn->prepare($sql);
-  // types: i + 10s + i + 8s + i + s = 'issssssssssissssssssis'
+  // types: i s s s s s s i i i s i s s s i s
   $stmt->bind_param(
-    'issssssssssissssssssis',
+    'issssssiiisisssis',
     $user_id,
     $title, $slug, $description, $meta_description, $keywords,
-    $main_image_url, $prep_time, $cook_time, $total_time,
+    $main_image_url, $prep_minutes, $cook_minutes, $total_minutes,
     $difficulty, $is_featured,
-    $instructions_intro, $instructions, $prep_instructions, $cook_instructions,
-    $do_tips, $dont_tips, $video_url, $origin_place, $origin_zoom, $origin_map_embed_url
+    $instructions_intro, $video_url, $origin_place, $origin_zoom, $origin_map_embed_url
   );
   $stmt->execute();
   $recipe_id = $stmt->insert_id;
@@ -127,18 +126,47 @@ try {
     $stmt->close();
   }
 
-  // ---------- recipe_instruction_sections ----------
+  // ---------- recipe_instruction_sections + steps ----------
   if (!empty($sections)) {
-    $stmt = $conn->prepare("INSERT INTO recipe_instruction_sections
-      (recipe_id, section_title, section_body, sort_order)
-      VALUES (?,?,?,?)");
+    $stmtSec = $conn->prepare("INSERT INTO recipe_instruction_sections (recipe_id, section_title, sort_order) VALUES (?,?,?)");
+    $stmtStp = $conn->prepare("INSERT INTO recipe_instruction_steps (section_id, step_text, sort_order) VALUES (?,?,?)");
+
     foreach ($sections as $row) {
-      $t = trim($row['section_title'] ?? '');
-      $b = trim($row['section_body'] ?? '');
-      if ($t === '' || $b === '') continue;
-      $s = isset($row['sort_order']) ? (int)$row['sort_order'] : 0;
-      $stmt->bind_param('issi', $recipe_id, $t, $b, $s);
-      $stmt->execute();
+      $titleSec = trim($row['section_title'] ?? '');
+      $body     = trim($row['section_body'] ?? '');
+      if ($titleSec === '') continue;
+
+      $sortSec = isset($row['sort_order']) ? (int)$row['sort_order'] : 0;
+      $stmtSec->bind_param('isi', $recipe_id, $titleSec, $sortSec);
+      $stmtSec->execute();
+      $section_id = $stmtSec->insert_id;
+
+      // tách body -> steps theo dòng
+      $steps = split_lines($body);
+      $order = 1;
+      foreach ($steps as $stepText) {
+        $sortOrder = $order;   
+        $stmtStp->bind_param('isi', $section_id, $stepText, $sortOrder);
+        $stmtStp->execute();
+        $order++;              // tăng sau khi execute
+      }
+    }
+    $stmtSec->close();
+    $stmtStp->close();
+  }
+
+  // ---------- recipe_notes (prep/cook/do/dont) ----------
+  if (!empty($notes) && is_array($notes)) {
+    $stmt = $conn->prepare("INSERT INTO recipe_notes (recipe_id, content_type, note_text, sort_order) VALUES (?,?,?,?)");
+    foreach (['prep','cook','do','dont'] as $type) {
+      if (empty($notes[$type]) || !is_array($notes[$type])) continue;
+      foreach ($notes[$type] as $row) {
+        $txt  = trim($row['note_text'] ?? '');
+        if ($txt === '') continue;
+        $sort = isset($row['sort_order']) ? (int)$row['sort_order'] : 0;
+        $stmt->bind_param('issi', $recipe_id, $type, $txt, $sort);
+        $stmt->execute();
+      }
     }
     $stmt->close();
   }
@@ -149,7 +177,6 @@ try {
   exit;
 
 } catch (Throwable $e) {
-  // luôn còn trong khối try/catch -> không còn lỗi "unexpected $conn"
   $conn->rollback();
   http_response_code(500);
   echo "Insert failed: " . htmlspecialchars($e->getMessage());

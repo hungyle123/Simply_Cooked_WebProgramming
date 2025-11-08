@@ -1,16 +1,31 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
 
-/** cat = all|breakfast|lunch|dinner (mặc định all) */
-$cat = strtolower(trim($_GET['cat'] ?? 'all'));
-$allowed = ['all','breakfast','lunch','dinner'];
-if (!in_array($cat, $allowed, true)) $cat = 'all';
+/** --- Load categories dynamically --- */
+$cats = [];
+$catStmt = $conn->prepare("SELECT slug, name FROM categories ORDER BY name ASC");
+$catStmt->execute();
+$catRes = $catStmt->get_result();
+while ($row = $catRes->fetch_assoc()) {
+  $slug = strtolower(trim($row['slug']));
+  if ($slug !== '') {
+    $cats[$slug] = $row['name'];
+  }
+}
+$catStmt->close();
 
-/** Hàm render 1 card (tận dụng file view có sẵn) */
-function render_recipe_card(array $r) {
-  include __DIR__ . '/recipe_card.php'; // dùng $r
+/** --- Resolve selected category (default: all) --- */
+$cat = strtolower(trim($_GET['cat'] ?? 'all'));
+if ($cat !== 'all' && !array_key_exists($cat, $cats)) {
+  $cat = 'all';
 }
 
+/** --- Card renderer (re-use existing view) --- */
+function render_recipe_card(array $r) {
+  include __DIR__ . '/recipe_card.php'; // expects $r
+}
+
+/** --- Query recipes --- */
 if ($cat === 'all') {
   $sql = "
     SELECT r.*
@@ -19,7 +34,6 @@ if ($cat === 'all') {
     LIMIT 6";
   $stmt = $conn->prepare($sql);
 } else {
-  // lọc theo slug category
   $sql = "
     SELECT r.*
     FROM recipes r
@@ -31,7 +45,6 @@ if ($cat === 'all') {
   $stmt = $conn->prepare($sql);
   $stmt->bind_param('s', $cat);
 }
-
 $stmt->execute();
 $res = $stmt->get_result();
 ?>
@@ -51,23 +64,26 @@ $res = $stmt->get_result();
         With our diverse collection of recipes we have something to satisfy every palate.
       </p>
 
-      <!-- Filter Pills (chỉ giao diện, chưa lọc backend) -->
+      <!-- Filter Pills (dynamic from DB) -->
       <div class="recipe-filters">
         <?php
-          $currentCat = isset($_GET['cat']) ? strtolower($_GET['cat']) : 'all';
-          $filters = [
-            'ALL' => '',
-            'BREAKFAST' => 'breakfast',
-            'LUNCH' => 'lunch',
-            'DINNER' => 'dinner'
-          ];
-          foreach ($filters as $label => $slug):
-            $isActive = ($slug === $currentCat || ($currentCat === 'all' && $slug === '')) ? 'active' : '';
-            $href = $slug ? "?cat={$slug}" : "index.php";
+          $currentCat = $cat; // resolved above
+          // Render "ALL"
+          $isActive = ($currentCat === 'all') ? 'active' : '';
+          $href = strtok($_SERVER['REQUEST_URI'], '?'); // same page without query
         ?>
-          <a href="<?php echo $href; ?>" class="filter-pill <?php echo $isActive; ?>">
-            <?php echo htmlspecialchars($label); ?>
+          <a href="<?php echo htmlspecialchars($href); ?>" class="filter-pill <?php echo $isActive; ?>">
+            ALL
           </a>
+        <?php
+          // Render each category from DB
+          foreach ($cats as $slug => $name):
+            $isActive = ($currentCat === $slug) ? 'active' : '';
+            $url = $href . '?cat=' . urlencode($slug);
+        ?>
+            <a href="<?php echo htmlspecialchars($url); ?>" class="filter-pill <?php echo $isActive; ?>">
+              <?php echo htmlspecialchars(strtoupper($name)); ?>
+            </a>
         <?php endforeach; ?>
       </div>
     </header>

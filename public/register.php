@@ -46,13 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt2->bind_param("sss", $username, $email, $hash);
 
             if ($stmt2->execute()) {
-                $new_id = $stmt2->insert_id;
+                $new_id = (int)$stmt2->insert_id;
+                $stmt2->close();
+
+                // >>> FIX: set phiên đăng nhập giống login.php
+                $_SESSION['user_id'] = $new_id; // QUAN TRỌNG: top-level để các trang khác nhận diện
                 $_SESSION['user'] = [
                     'user_id'  => $new_id,
                     'username' => $username,
                     'email'    => $email,
+                    'role'     => 'user', // default trong DB; set vào session để đồng bộ
                 ];
-                $stmt2->close();
 
                 header('Location: index.php');
                 exit;
@@ -164,10 +168,13 @@ function openOAuthPopup(url){
   );
 }
 
-document.getElementById('google-login-btn').addEventListener('click', function(){
-  openOAuthPopup(this.getAttribute('data-oauth-url'));
-});
-
+// tránh lỗi nếu không có phần tử với id này
+const googleBtn = document.getElementById('google-login-btn');
+if (googleBtn) {
+  googleBtn.addEventListener('click', function(){
+    openOAuthPopup(this.getAttribute('data-oauth-url'));
+  });
+}
 </script>
 
 <?php include __DIR__ . '/../app/views/footer.php'; ?>
