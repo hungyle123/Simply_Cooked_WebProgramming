@@ -1,6 +1,7 @@
 <?php
 // config/oauth.php
 // NOTE: KHÔNG commit file này nếu repo public.
+// API Key đã bỏ nên không chỉnh file này.
 return [
   'google' => [
     'client_id'     => '939388920985-aar212509qhd4us5fh606to97snghg3b.apps.googleusercontent.com',
